@@ -1,0 +1,72 @@
+# ================= Java / Maven =================
+target/
+!.mvn/wrapper/maven-wrapper.jar
+*.class
+*.jar
+*.war
+*.ear
+*.log
+hs_err_pid*
+replay_pid*
+
+# ================= IDE =================
+.idea/
+*.iws
+*.iml
+*.ipr
+.vscode/
+.settings/
+.project
+.classpath
+.factorypath
+nbproject/
+
+# ================= 运行时文件 =================
+# 本地文件存储目录（物理文件不入库）
+upload/
+/backend/upload/
+*.tmp
+*.temp
+*.part
+
+# ================= 环境配置（含敏感信息） =================
+.env
+.env.local
+application-local.yml
+application-prod-secret.yml
+*.pem
+*.key
+
+# ================= 数据库 =================
+*.sql.gz
+dump.sql
+*.sqlite
+*.db
+
+# ================= 前端 =================
+node_modules/
+dist/
+dist-ssr/
+.vite/
+*.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.eslintcache
+
+# ================= 操作系统 =================
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ================= 工具缓存 =================
+.cache/
+.temp/
+tmp/
+.flattened-pom.xml
+
+# ================= 系统 =================
+Thumbs.db
+$RECYCLE.BIN/
