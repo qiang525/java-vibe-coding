@@ -37,6 +37,10 @@ application-prod-secret.yml
 *.pem
 *.key
 
+# ================= 本地诊断工具产生的备份 =================
+# 记录的是本机 PATH 内容，与个人环境相关，不入库
+tools/fix-java-path/PATH_backup_*.txt
+
 # ================= 数据库 =================
 *.sql.gz
 dump.sql
@@ -66,6 +70,9 @@ Desktop.ini
 .temp/
 tmp/
 .flattened-pom.xml
+
+# ================= AI 助手工作目录（本地数据，不入库） =================
+.workbuddy/
 
 # ================= 系统 =================
 Thumbs.db
