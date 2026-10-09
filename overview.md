@@ -148,6 +148,15 @@ M4 评分与上线      ✅ 评分模型 + 审计日志 + 部署方案
 
 ## 五、怎么跑起来
 
+项目是**前后端分离**的，有两条路：
+
+| 方式 | 启动什么 | 网页地址 | 适合 |
+|---|---|---|---|
+| **A 前后端分开** | Redis + 后端 + 前端 | `http://localhost:5173` | 改前端代码（有热更新） |
+| **B 只启后端** | Redis + 后端 | `http://localhost:8080` | 看效果 / 演示 / 交作业 |
+
+### 方式 A（前后端分开）
+
 ```bash
 # 1. 启动 Redis（双击）
 E:/java/redis/start.bat
@@ -164,6 +173,35 @@ E:/node.js/npm.cmd run dev
 # 4. 浏览器打开
 http://localhost:5173
 ```
+
+### 方式 B（只启后端，一个端口）
+
+```bash
+# 0. 打包一次：把前端构建产物复制进后端静态目录（改了前端代码要重跑）
+#    双击 D:\桌面\Java项目AIGC\frontend\build-to-backend.bat
+
+# 1. 双击 E:\java\redis\start.bat
+
+# 2. 启动后端（同上）
+
+# 3. 浏览器打开
+http://localhost:8080
+```
+
+> 原理：前端的 `dist` 被复制到 `backend/src/main/resources/static/`，
+> Spring Boot 默认就会托管这个目录；前端请求 `/api/xxx` 是同源请求，不需要代理。
+> 这与线上用 Nginx 托管静态文件的思路是一致的（见部署上线指南）。
+
+### 在 IDEA 里启动
+
+```
+File → Open → 选 D:\桌面\Java项目AIGC\backend
+→ 等 Maven 导入完成
+→ 打开 CourseHubApplication.java → 点行号旁的绿色 ▶
+→ 浏览器打开 http://localhost:8080
+```
+
+> 前提：Redis 已启动；`application-local.yml`（数据库密码）存在。
 
 **测试账号**：`admin` / `admin123`（管理员）
 

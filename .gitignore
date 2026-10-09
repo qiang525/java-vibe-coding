@@ -97,3 +97,8 @@ deploy/.env
 deploy/certs/
 deploy/backup/
 *.pem
+
+# ================= 前端构建产物（由脚本复制进后端，不入库） =================
+# 用途：让"只启后端"时也能在 8080 打开网页。
+# 重新生成：双击 frontend/build-to-backend.bat
+backend/src/main/resources/static/
