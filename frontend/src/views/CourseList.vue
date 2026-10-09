@@ -56,7 +56,12 @@
       <!-- 课程列表 -->
       <div v-loading="loading" class="course-list">
         <template v-if="courses.length">
-          <div v-for="c in courses" :key="c.id" class="course-card ch-card">
+          <div
+            v-for="c in courses"
+            :key="c.id"
+            class="course-card ch-card"
+            @click="goDetail(c)"
+          >
             <div class="course-cover">{{ (c.name || '课').charAt(0) }}</div>
             <div class="course-body">
               <h3 class="ch-ellipsis">{{ c.name }}</h3>
@@ -72,7 +77,7 @@
                   <span>成员 {{ c.memberCount }}</span>
                   <span>资料 {{ c.resourceCount }}</span>
                 </div>
-                <el-button size="small" type="primary" plain @click="handleJoin(c)">
+                <el-button size="small" type="primary" plain @click.stop="handleJoin(c)">
                   加入课程
                 </el-button>
               </div>
@@ -233,6 +238,11 @@ function handleReset() {
 function handlePageChange(page) {
   query.page = page
   fetchList()
+}
+
+/** 跳转到课程详情页 */
+function goDetail(course) {
+  router.push(`/courses/${course.id}`)
 }
 
 // ==================== 加入课程 ====================

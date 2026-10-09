@@ -22,7 +22,13 @@
         >
           课程
         </router-link>
-        <span class="nav-link nav-disabled" title="M2 阶段开放">资料库</span>
+        <router-link
+          to="/resources"
+          class="nav-link"
+          :class="{ active: active === 'resources' }"
+        >
+          资料库
+        </router-link>
 
         <!-- 已登录：显示用户菜单 -->
         <el-dropdown v-if="userStore.isLoggedIn" @command="handleCommand">

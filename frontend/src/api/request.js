@@ -19,7 +19,8 @@ const baseURL = import.meta.env.VITE_API_BASE_URL || '/'
 
 const request = axios.create({
   baseURL,
-  timeout: 30000,
+  // 默认 30 秒；上传大文件时会在请求里单独放宽
+  timeout: 60000,
   headers: {
     'Content-Type': 'application/json;charset=UTF-8'
   }
@@ -47,6 +48,13 @@ request.interceptors.request.use(
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`
     }
+
+    // 文件上传走 multipart/form-data。这里必须把默认的 application/json 删掉，
+    // 否则浏览器不会自动补上 multipart/form-data; boundary=xxx，后端解析不出文件。
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type']
+    }
+
     return config
   },
   (error) => Promise.reject(error)

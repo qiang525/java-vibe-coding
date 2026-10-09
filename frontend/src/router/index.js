@@ -23,6 +23,24 @@ const routes = [
     meta: { title: '课程库', requiresAuth: false }
   },
   {
+    path: '/courses/:id',
+    name: 'CourseDetail',
+    component: () => import('@/views/CourseDetail.vue'),
+    meta: { title: '课程详情', requiresAuth: false }
+  },
+  {
+    path: '/resources',
+    name: 'ResourceList',
+    component: () => import('@/views/ResourceList.vue'),
+    meta: { title: '资料库', requiresAuth: false }
+  },
+  {
+    path: '/resources/:id',
+    name: 'ResourceDetail',
+    component: () => import('@/views/ResourceDetail.vue'),
+    meta: { title: '资料详情', requiresAuth: false }
+  },
+  {
     path: '/login',
     name: 'Login',
     component: () => import('@/views/Login.vue'),
