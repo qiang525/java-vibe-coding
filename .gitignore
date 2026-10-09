@@ -83,3 +83,9 @@ backend/m0-verify.log
 backend/app-run.log
 backend/compile.log
 backend/app.log
+frontend/build.log
+frontend/install.log
+frontend/dev-server.log
+frontend/integration-verify.log
+backend/m0-verify.log
+backend/app-run.log
