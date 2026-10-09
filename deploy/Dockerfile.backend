@@ -1,0 +1,42 @@
+# =============================================================================
+#  后端镜像：多阶段构建
+# -----------------------------------------------------------------------------
+#  为什么用多阶段：
+#    构建阶段需要完整的 Maven + JDK（几百 MB），
+#    运行阶段只需要 JRE（几十 MB）。
+#    多阶段构建让最终镜像只包含运行需要的东西，体积小、攻击面也小。
+# =============================================================================
+
+# ---------- 阶段一：构建 ----------
+FROM maven:3.9-eclipse-temurin-11 AS builder
+WORKDIR /build
+
+# 先只拷 pom.xml 并下载依赖 —— 这样改代码时不会重复下载依赖，构建快很多
+COPY backend/pom.xml .
+RUN mvn dependency:go-offline -B
+
+# 再拷源码并打包
+COPY backend/src ./src
+RUN mvn clean package -DskipTests -B
+
+# ---------- 阶段二：运行 ----------
+FROM eclipse-temurin:11-jre
+WORKDIR /app
+
+# 时区设为东八区，否则日志时间差 8 小时
+ENV TZ=Asia/Shanghai
+
+COPY --from=builder /build/target/*.jar app.jar
+
+# 上传文件目录（会在 compose 里挂载出来，避免容器重启丢文件）
+RUN mkdir -p /app/upload
+
+EXPOSE 8080
+
+# 用 prod 配置启动；密钥通过环境变量注入，不写死在镜像里
+ENTRYPOINT ["java", \
+  "-XX:+UseContainerSupport", \
+  "-XX:MaxRAMPercentage=75.0", \
+  "-Duser.timezone=Asia/Shanghai", \
+  "-jar", "app.jar", \
+  "--spring.profiles.active=prod"]

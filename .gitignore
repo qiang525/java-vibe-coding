@@ -91,3 +91,9 @@ backend/m0-verify.log
 backend/app-run.log
 backend/m1-verify.log
 backend/course-verify.log
+
+# ================= 部署相关（含密钥，绝不上传） =================
+deploy/.env
+deploy/certs/
+deploy/backup/
+*.pem
