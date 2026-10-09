@@ -13,19 +13,19 @@ M0 项目骨架    ✅ 完成  ── 前后端跑通，数据库建好
 M1 用户与课程  ✅ 完成  ── 能登录、能建课、越权会被拦
 M2 资料核心    🔄 进行中
    ├─ M2-1 文件存储与上传   ✅ 完成
-   ├─ M2-2 资料管理 + 三级可见性  ✅ 完成  ← 本次交付
-   ├─ M2-3 分片上传（秒传 / 断点续传 / 合并复验）
+   ├─ M2-2 资料管理 + 三级可见性  ✅ 完成
+   ├─ M2-3 分片上传 + 断点续传   ✅ 完成  ← 本次交付
    ├─ M2-4 中文全文检索
    └─ M2-5 前端资料页与上传组件
 M3 协作与治理  ⏳
 M4 评分与上线  ⏳
 ```
 
-**当前规模**：后端 63 个类 / 约 5500 行，前端 15 个文件 / 约 1900 行，文档 8 份。
+**当前规模**：后端 69 个类 / 约 6300 行，前端 15 个文件 / 约 1900 行，文档 7 份。
 
 ---
 
-## 二、本次交付：M2-1 文件存储与上传
+## 二、M2-1 文件存储与上传（已交付）
 
 ### 做了什么
 
@@ -55,7 +55,53 @@ M4 评分与上线  ⏳
 
 ---
 
-## 三、M2-2 资料管理 + 三级可见性（本次交付）
+## 三、M2-3 分片上传 + 断点续传（本次交付）
+
+### 做了什么
+
+| 模块 | 文件 | 能力 |
+|---|---|---|
+| **业务层** | `ChunkUploadService` + `ChunkUploadServiceImpl` | Redis 记进度、合并复验、并发去重 |
+| **接口层** | `FileChunkController` | check / upload / merge 三个接口 |
+
+### 三个接口的配合
+
+```
+① GET  /api/files/chunk/check    → 是否秒传 / 拿已传分片列表
+② POST /api/files/chunk/upload   → 循环上传每个分片（5MB 一片）
+③ POST /api/files/chunk/merge    → 合并 + 全文件 MD5 复验
+```
+
+### Redis 终于派上用场了
+
+在这之前，项目的 Redis 只有配置类、没有一行业务代码用它。现在它承担了：
+
+```
+key:   coursehub:upload:chunk:{文件MD5}
+type:  Set（天然去重，重传同一分片不会重复计数）
+TTL:   24 小时（用户传一半走了，自动清理）
+```
+
+**为什么放 Redis 不放数据库**：上传进度是临时状态、写入极频繁（500MB 文件要写 100 次）、
+而且需要自动过期。这三点都指向 Redis 而不是 MySQL。
+
+### 三个关键设计
+
+**1. 断点续传**：传了一半关掉浏览器，第二天打开 → 前端先调 `check`
+拿到 `uploadedChunks=[0,1,2]` → 只补传 3 号之后的分片。
+
+**2. 合并后的 MD5 复验**（最不该省的一步）
+前端算的是"原始文件"的 MD5，服务端算的是"合并后文件"的 MD5。
+两者不一致 → 说明有分片损坏 / 乱序 / 截断 → **拒绝入库**。
+不做这一步，用户会拿到一个"看着正常但打不开"的坏文件。
+
+**3. hash 格式校验其实是安全防线**
+`fileHash` 会被拼进临时目录路径，限定成 32 位十六进制后，
+`../../windows/system32` 这类路径穿越攻击就彻底不可能了。
+
+---
+
+## 四、M2-2 资料管理 + 三级可见性
 
 ### 做了什么
 
@@ -99,7 +145,7 @@ query.setCurrentUserId(UserContext.getUserId());   // 前端传什么都会被�
 
 ---
 
-## 三、验收证据（实测）
+## 五、验收证据（实测）
 
 ### M2-1 文件模块：25 / 25 通过
 
@@ -129,6 +175,22 @@ query.setCurrentUserId(UserContext.getUserId());   // 前端传什么都会被�
 | 发布 3 份后课程资料数 | ✅ 3 |
 | 删除后资料数 | ✅ 2 |
 
+### M2-3 分片上传：26 / 26 通过（使用真实 50MB 文件）
+
+测试文件：`E://文件办公//PPT//文体活动.pptx`（47.95 MB）
+
+| 场景 | 结果 |
+|---|---|
+| 上传前检查（全新上传） | ✅ exists=false |
+| **先传 3 片 → 查进度** | ✅ 返回 `[0,1,2]`（**断点续传生效**） |
+| 补传剩余 7 片 | ✅ 耗时 2.7 秒 |
+| 合并 + MD5 复验 | ✅ 成功 |
+| **下载回来比对 MD5** | ✅ 与原文件完全一致 |
+| 再次检查（秒传） | ✅ exists=true，返回同一 fileId |
+| 用该文件发布资料 | ✅ 串通 M2-2 |
+| 非法哈希（路径穿越） | ✅ 40001 拦截 |
+| 临时分片目录 | ✅ 合并后自动清理 |
+
 ### 历史验收（未回归但保持）
 
 | 模块 | 结果 |
@@ -147,7 +209,7 @@ backend/upload/
 
 ---
 
-## 四、怎么自己跑起来
+## 六、怎么自己跑起来
 
 ```bash
 # 1. 启动 Redis
@@ -181,7 +243,7 @@ bash verify-file.sh
 
 ---
 
-## 五、目录结构
+## 七、目录结构
 
 ```
 D:\桌面\Java项目AIGC\
@@ -192,22 +254,25 @@ D:\桌面\Java项目AIGC\
 │   ├── sql/schema.sql  init_data.sql
 │   ├── test-auth.py   + verify-m1.sh        ← M1 认证测试
 │   ├── test-course.py + verify-course.sh    ← M1 课程测试
-│   ├── test-file.py   + verify-file.sh      ← M2 文件测试
+│   ├── test-file.py   + verify-file.sh      ← M2-1 文件测试
+│   ├── test-resource.py + verify-resource.sh ← M2-2 资料测试
+│   ├── test-chunk.py  + verify-chunk.sh     ← M2-3 分片上传测试（用真实 50MB 文件）
 │   ├── upload/                              ← 上传的文件（不入 Git）
 │   └── src/main/
 │       ├── java/com/nnuist/coursehub/
 │       │   ├── common/        result / exception / page / constant / util / annotation
 │       │   ├── config/        Cors / Redis / Knife4j / WebMvc
-│       │   ├── controller/    Health / Auth / College / Course / File
-│       │   ├── service/       User / College / Course / File (+ impl)
-│       │   ├── mapper/        User / College / Course / File
+│       │   ├── controller/    Health / Auth / College / Course / File / FileChunk / Resource
+│       │   ├── service/       User / College / Course / File / ChunkUpload / Resource (+ impl)
+│       │   ├── mapper/        User / College / Course / File / Resource / ResourceVersion
 │       │   ├── entity/ dto/ vo/
 │       │   ├── interceptor/   AuthInterceptor
-│       │   ├── storage/       FileStorage / LocalFileStorage   ← M2-1 新增
+│       │   ├── storage/       FileStorage / LocalFileStorage
 │       │   └── aspect/ scheduler/   ← 待 M3/M4 填充
 │       └── resources/
 │           ├── application.yml  -dev.yml  -prod.yml  -local.yml(不传)
-│           └── mapper/  UserMapper.xml  CollegeMapper.xml  CourseMapper.xml  FileMapper.xml
+│           └── mapper/  UserMapper.xml  CollegeMapper.xml  CourseMapper.xml
+│                        FileMapper.xml  ResourceMapper.xml  ResourceVersionMapper.xml
 │
 ├── frontend/src/
 │   ├── api/ request.js health.js auth.js course.js college.js
@@ -221,14 +286,16 @@ D:\桌面\Java项目AIGC\
 │   ├── 技术架构与中间件全景.md
 │   ├── 数据库表设计详解.md
 │   ├── 接口清单.md
-│   └── 文件上传与存储设计.md      ← 本次新增
+│   ├── 文件上传与存储设计.md
+│   ├── 资料管理与权限设计.md
+│   └── 分片上传设计.md            ← 本次新增
 │
 └── tools/fix-java-path/
 ```
 
 ---
 
-## 六、已知问题与技术债
+## 八、已知问题与技术债
 
 审查时发现的、**尚未处理**的问题（记录在案，后续按优先级处理）：
 
@@ -245,41 +312,17 @@ D:\桌面\Java项目AIGC\
 
 ---
 
-## 七、下一步
+## 九、下一步
 
-**M2-3：分片上传 + 断点续传 + 秒传**
+**M2-4：中文全文检索**
 
 要做的事：
-1. 分片上传接口（大文件切成 5MB 一块分别上传）
-2. 上传进度记到 **Redis** —— 这是 Redis 在本项目第一次真正派上用场
-3. 断点续传（刷新页面后接着传，已传的分片不重传）
-4. 合并后做全文件 MD5 复验（防止分片传坏）
+1. 用 MySQL 的 **ngram 全文索引**实现资料搜索
+2. 对比 `MATCH ... AGAINST` 和 `LIKE '%关键词%'` 的性能差距（用 EXPLAIN 看）
+3. 搜索结果按可信度评分排序
+4. 加搜索热词缓存（Redis）
 
-做完你能看到：**500MB 的课件也能稳定上传，中途断了能接着传**。
-
----
-
-## 八、给你的练习
-
-整理了一份 `docs/练习任务.md`，6 个可以直接上手的练习，从易到难：
-
-| # | 练习 | 难度 |
-|---|---|---|
-| 1 | 验证资料列表的筛选条件整条链路 | ⭐ |
-| 2 | 自己加一个"我的资料"接口 | ⭐ |
-| 3 | 给课程卡片加"查看详情"跳转（含新建详情页） | ⭐⭐ |
-| 4 | 用 EXPLAIN 验证组合索引（写索引笔记） | ⭐⭐ |
-| 5 | 让 Redis 真正派上用场（下载计数走 Redis + 定时落库） | ⭐⭐ |
-| 6 | 实现"收藏"功能（完整走一遍加模块的流程） | ⭐⭐⭐ |
-
-每个练习都写了「你会学到什么 / 提示 / 验收标准」，但**不给完整答案**。
-卡住了告诉我卡在哪，我给下一步提示 —— 自己找到答案的那次才算真学会。
+做完你能看到：**搜「数据结构」能命中「数据结构与算法」**，
+而且数据量大时不会像 `LIKE` 那样全表扫描。
 
 ---
-
-## 八、需要你配合的事
-
-1. **Java PATH 修复脚本**还没执行（不影响 Maven/IDEA，但命令行 `java` 会崩）
-   → 双击 `tools\fix-java-path\run-fix.bat`
-2. **GitHub 仓库**还没推（本地已有 8 个提交）
-   → 建好仓库把 URL 给我即可
