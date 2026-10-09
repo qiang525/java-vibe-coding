@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+    文件模块 SQL 映射
+    对应表：file（物理文件表）
+-->
+<mapper namespace="com.nnuist.coursehub.mapper.FileMapper">
+
+    <sql id="Base_Column_List">
+        id, file_hash, file_name, file_ext, storage_path, file_size,
+        mime_type, storage_type, ref_count, uploader_id, created_at
+    </sql>
+
+    <!-- 按 MD5 查（走唯一索引 uk_file_hash）—— 秒传用 -->
+    <select id="selectByHash" resultType="FileInfo">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM file
+        WHERE file_hash = #{fileHash}
+        LIMIT 1
+    </select>
+
+    <select id="selectById" resultType="FileInfo">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM file
+        WHERE id = #{id}
+        LIMIT 1
+    </select>
+
+    <insert id="insert" parameterType="FileInfo"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO file
+        (file_hash, file_name, file_ext, storage_path, file_size,
+         mime_type, storage_type, ref_count, uploader_id, created_at)
+        VALUES
+        (#{fileHash}, #{fileName}, #{fileExt}, #{storagePath}, #{fileSize},
+         #{mimeType}, #{storageType}, #{refCount}, #{uploaderId}, NOW())
+    </insert>
+
+    <!--
+        计数 +1 / -1 都用「原地自增」写法
+        这样在数据库层面就是原子的，多个请求并发也不会算错
+    -->
+    <update id="increaseRefCount">
+        UPDATE file
+        SET ref_count = ref_count + 1
+        WHERE id = #{id}
+    </update>
+
+    <update id="decreaseRefCount">
+        UPDATE file
+        SET ref_count = ref_count - 1
+        WHERE id = #{id}
+          AND ref_count > 0
+    </update>
+
+    <!-- 引用归零后清理记录 -->
+    <delete id="deleteById">
+        DELETE FROM file
+        WHERE id = #{id}
+    </delete>
+
+</mapper>
