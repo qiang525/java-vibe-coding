@@ -22,6 +22,7 @@
           <el-breadcrumb-item>资料详情</el-breadcrumb-item>
         </el-breadcrumb>
 
+        <!-- ==================== 资料主体 ==================== -->
         <div class="detail-card ch-card ch-fade-up">
           <!-- 标题区 -->
           <div class="head">
@@ -41,6 +42,28 @@
                 </span>
               </div>
             </div>
+          </div>
+
+          <!-- 数据条 -->
+          <div class="stat-strip">
+            <span class="s-item">
+              <b>{{ detail.downloadCount || 0 }}</b> 下载
+            </span>
+            <span class="s-item">
+              <b>{{ detail.viewCount || 0 }}</b> 浏览
+            </span>
+            <span class="s-item">
+              <b>{{ detail.favoriteCount || 0 }}</b> 收藏
+            </span>
+            <span class="s-item">
+              <b>{{ detail.commentCount || 0 }}</b> 评论
+            </span>
+            <span class="s-item">
+              <b>{{ detail.versionCount || 1 }}</b> 版本
+            </span>
+            <span v-if="detail.score != null" class="s-item score">
+              <el-icon><Star /></el-icon> 可信度 <b>{{ Number(detail.score).toFixed(1) }}</b>
+            </span>
           </div>
 
           <!-- 元信息栅格 -->
@@ -67,6 +90,20 @@
               下载文件
             </el-button>
 
+            <!-- 收藏（点击切换） -->
+            <el-button
+              size="large"
+              round
+              :type="collected ? 'warning' : 'default'"
+              :plain="collected"
+              :loading="collecting"
+              @click="toggleCollect"
+            >
+              <el-icon v-if="collected"><StarFilled /></el-icon>
+              <el-icon v-else><Star /></el-icon>
+              {{ collected ? '已收藏' : '收藏' }}
+            </el-button>
+
             <el-button
               v-if="detail.canEdit"
               size="large"
@@ -89,8 +126,18 @@
               删除资料
             </el-button>
 
+            <!-- 举报 -->
+            <el-button
+              size="large"
+              round
+              :icon="Warning"
+              @click="openReport"
+            >
+              举报
+            </el-button>
+
             <span v-if="!userStore.isLoggedIn" class="login-tip">
-              <el-icon><InfoFilled /></el-icon> 登录后可下载文件
+              <el-icon><InfoFilled /></el-icon> 登录后可下载与收藏
             </span>
           </div>
 
@@ -99,6 +146,40 @@
             <h3><el-icon><Document /></el-icon> 资料描述</h3>
             <p class="desc">{{ detail.description || '暂无描述' }}</p>
           </div>
+        </div>
+
+        <!-- ==================== 版本历史 / 讨论区 ==================== -->
+        <div class="tabs-card ch-card ch-fade-up ch-delay-2">
+          <el-tabs v-model="activeTab">
+            <el-tab-pane name="versions">
+              <template #label>
+                <span class="tab-label">
+                  <el-icon><Share /></el-icon> 版本历史
+                  <span class="tab-count">{{ detail.versionCount || versionCount }}</span>
+                </span>
+              </template>
+              <VersionHistory
+                ref="versionRef"
+                :resource-id="route.params.id"
+                :can-edit="!!detail.canEdit"
+                @changed="onVersionChanged"
+              />
+            </el-tab-pane>
+
+            <el-tab-pane name="comments">
+              <template #label>
+                <span class="tab-label">
+                  <el-icon><ChatDotRound /></el-icon> 讨论区
+                  <span class="tab-count">{{ detail.commentCount || 0 }}</span>
+                </span>
+              </template>
+              <CommentSection
+                ref="commentRef"
+                :resource-id="route.params.id"
+                @changed="onCommentChanged"
+              />
+            </el-tab-pane>
+          </el-tabs>
         </div>
       </template>
 
@@ -113,6 +194,15 @@
     </main>
 
     <AppFooter />
+
+    <!-- 举报对话框 -->
+    <ReportDialog
+      v-model="reportVisible"
+      target-type="RESOURCE"
+      :target-id="route.params.id"
+      :target-name="detail?.title"
+      target-label="资料"
+    />
 
     <!-- 编辑对话框 -->
     <el-dialog v-model="editVisible" title="编辑资料信息" width="540px">
@@ -156,24 +246,32 @@
 /**
  * 资料详情页
  *
- * 关键点：**下载必须用 axios 拿到 Blob 再触发下载**，不能直接用
- * `<a href="/api/resources/1/download">` —— 因为浏览器直接打开链接带不上
- * Token，后端会返回 401。
+ * 这一页是"资料协作"的**汇聚点**，把 M2 + M3 的能力都用上：
+ *   · 下载文件（Blob 方式，才能带上 Token）
+ *   · 收藏 / 取消收藏（M3）
+ *   · 举报资料（M3）
+ *   · 版本历史：看历史、下载历史版本、回滚、上传新版本（M3 版本树）
+ *   · 讨论区：发评论、回复、删除、举报评论（M3 评论）
  */
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   Download, Edit, Delete, Document, InfoFilled, CircleCheckFilled,
-  Calendar, User, Folder, View, Coin
+  Calendar, User, Folder, View, Coin, Star, StarFilled, Warning,
+  Share, ChatDotRound
 } from '@element-plus/icons-vue'
 import AppHeader from '@/components/AppHeader.vue'
 import AppFooter from '@/components/AppFooter.vue'
+import VersionHistory from '@/components/VersionHistory.vue'
+import CommentSection from '@/components/CommentSection.vue'
+import ReportDialog from '@/components/ReportDialog.vue'
 import {
   getResourceDetail,
   updateResource,
   deleteResource
 } from '@/api/resource'
+import { isCollected, collectResource, uncollectResource } from '@/api/collection'
 import request from '@/api/request'
 import { useUserStore } from '@/store/user'
 
@@ -185,6 +283,19 @@ const loading = ref(false)
 const downloading = ref(false)
 const saving = ref(false)
 const detail = ref(null)
+
+const activeTab = ref('versions')
+const versionRef = ref(null)
+const commentRef = ref(null)
+
+// 收藏状态
+const collected = ref(false)
+const collecting = ref(false)
+
+// 举报
+const reportVisible = ref(false)
+
+const versionCount = ref(0)
 
 const editVisible = ref(false)
 const editForm = reactive({
@@ -222,7 +333,7 @@ const metaItems = computed(() => {
     { label: '上传时间', value: d.createdAt || '-', icon: Calendar },
     { label: '文件名', value: d.fileName || '-', icon: Document },
     { label: '文件大小', value: d.readableSize || '-', icon: Coin },
-    { label: '下载 / 浏览', value: `${d.downloadCount || 0} / ${d.viewCount || 0}`, icon: Download }
+    { label: '最近更新', value: d.updatedAt || d.createdAt || '-', icon: Calendar }
   ]
 })
 
@@ -235,6 +346,18 @@ async function fetchDetail() {
     detail.value = null
   } finally {
     loading.value = false
+  }
+}
+
+async function fetchCollected() {
+  if (!userStore.isLoggedIn) {
+    collected.value = false
+    return
+  }
+  try {
+    collected.value = await isCollected(route.params.id)
+  } catch (e) {
+    collected.value = false
   }
 }
 
@@ -268,6 +391,51 @@ async function handleDownload() {
   } finally {
     downloading.value = false
   }
+}
+
+// ==================== 收藏 ====================
+async function toggleCollect() {
+  if (!userStore.isLoggedIn) {
+    ElMessage.warning('请先登录后再收藏')
+    router.push({ path: '/login', query: { redirect: route.fullPath } })
+    return
+  }
+  collecting.value = true
+  try {
+    if (collected.value) {
+      await uncollectResource(route.params.id)
+      collected.value = false
+      ElMessage.success('已取消收藏')
+    } else {
+      await collectResource(route.params.id)
+      collected.value = true
+      ElMessage.success('已加入我的收藏')
+    }
+    fetchDetail() // 刷新收藏数
+  } catch (e) {
+    // 拦截器已提示（含 40905 重复收藏）
+  } finally {
+    collecting.value = false
+  }
+}
+
+// ==================== 举报 ====================
+function openReport() {
+  if (!userStore.isLoggedIn) {
+    ElMessage.warning('请先登录后再举报')
+    router.push({ path: '/login', query: { redirect: route.fullPath } })
+    return
+  }
+  reportVisible.value = true
+}
+
+// ==================== 版本 / 评论变化回调 ====================
+function onVersionChanged() {
+  fetchDetail()
+}
+
+function onCommentChanged() {
+  fetchDetail()
 }
 
 // ==================== 编辑 ====================
@@ -323,7 +491,10 @@ async function handleDelete() {
   }
 }
 
-onMounted(fetchDetail)
+onMounted(() => {
+  fetchDetail()
+  fetchCollected()
+})
 </script>
 
 <style scoped>
@@ -346,7 +517,7 @@ onMounted(fetchDetail)
   gap: 18px;
   padding-bottom: 22px;
   border-bottom: 1px solid var(--ch-border-light);
-  margin-bottom: 22px;
+  margin-bottom: 20px;
 }
 
 .head-icon {
@@ -406,24 +577,47 @@ onMounted(fetchDetail)
   background: rgba(79, 70, 229, 0.1);
 }
 
-.vis-PUBLIC {
-  color: #047857;
-  background: rgba(16, 185, 129, 0.12);
+.vis-PUBLIC { color: #047857; background: rgba(16, 185, 129, 0.12); }
+.vis-COURSE_ONLY { color: #b45309; background: rgba(245, 158, 11, 0.14); }
+.vis-PRIVATE { color: #b91c1c; background: rgba(239, 68, 68, 0.12); }
+
+.ok-chip { color: #047857; background: rgba(16, 185, 129, 0.12); }
+
+/* ---------- 数据条 ---------- */
+.stat-strip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 20px;
 }
 
-.vis-COURSE_ONLY {
+.s-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 15px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  color: var(--ch-text-secondary);
+  background: var(--ch-bg-muted);
+  border: 1px solid var(--ch-border-light);
+}
+
+.s-item b {
+  font-size: 15px;
+  color: var(--ch-text-primary);
+  font-weight: 700;
+}
+
+.s-item.score {
   color: #b45309;
-  background: rgba(245, 158, 11, 0.14);
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.25);
 }
 
-.vis-PRIVATE {
-  color: #b91c1c;
-  background: rgba(239, 68, 68, 0.12);
-}
-
-.ok-chip {
-  color: #047857;
-  background: rgba(16, 185, 129, 0.12);
+.s-item.score b {
+  color: #b45309;
 }
 
 /* ---------- 元信息栅格 ---------- */
@@ -510,6 +704,33 @@ onMounted(fetchDetail)
   white-space: pre-wrap;
 }
 
+/* ---------- Tabs 卡片 ---------- */
+.tabs-card {
+  margin-top: 18px;
+  padding: 8px 28px 26px;
+}
+
+.tab-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14.5px;
+  font-weight: 600;
+}
+
+.tab-count {
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ch-primary);
+  background: rgba(79, 70, 229, 0.1);
+}
+
+.tabs-card :deep(.el-tabs__header) {
+  margin-bottom: 22px;
+}
+
 /* ---------- 骨架屏 ---------- */
 .sk-line {
   height: 14px;
@@ -522,6 +743,10 @@ onMounted(fetchDetail)
 
   .detail-card {
     padding: 22px 20px;
+  }
+
+  .tabs-card {
+    padding: 6px 18px 20px;
   }
 
   .meta-grid {

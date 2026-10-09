@@ -41,6 +41,18 @@ const routes = [
     meta: { title: '资料详情', requiresAuth: false }
   },
   {
+    path: '/collections',
+    name: 'MyCollections',
+    component: () => import('@/views/MyCollections.vue'),
+    meta: { title: '我的收藏', requiresAuth: true }
+  },
+  {
+    path: '/admin/reports',
+    name: 'ReportManage',
+    component: () => import('@/views/ReportManage.vue'),
+    meta: { title: '举报处理', requiresAuth: true }
+  },
+  {
     path: '/login',
     name: 'Login',
     component: () => import('@/views/Login.vue'),

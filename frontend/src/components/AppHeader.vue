@@ -55,6 +55,12 @@
               <el-dropdown-item disabled>
                 <el-icon><User /></el-icon> {{ userStore.userInfo?.username }}
               </el-dropdown-item>
+              <el-dropdown-item divided command="collections">
+                <el-icon><StarFilled /></el-icon> 我的收藏
+              </el-dropdown-item>
+              <el-dropdown-item v-if="userStore.isAdmin" command="reports">
+                <el-icon><Warning /></el-icon> 举报处理
+              </el-dropdown-item>
               <el-dropdown-item divided command="logout">
                 <el-icon><SwitchButton /></el-icon> 退出登录
               </el-dropdown-item>
@@ -85,7 +91,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { ArrowDown, User, SwitchButton } from '@element-plus/icons-vue'
+import { ArrowDown, User, SwitchButton, StarFilled, Warning } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/user'
 
 defineProps({
@@ -124,6 +130,14 @@ function handleCommand(command) {
     userStore.logout()
     ElMessage.success('已退出登录')
     router.push('/')
+    return
+  }
+  if (command === 'collections') {
+    router.push('/collections')
+    return
+  }
+  if (command === 'reports') {
+    router.push('/admin/reports')
   }
 }
 
