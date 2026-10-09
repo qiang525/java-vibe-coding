@@ -2,7 +2,7 @@
   <el-dialog
     v-model="visible"
     title="上传资料"
-    width="620px"
+    width="640px"
     :close-on-click-modal="false"
     @closed="reset"
   >
@@ -23,7 +23,10 @@
         @dragleave.prevent="dragging = false"
         @drop.prevent="onDrop"
       >
-        <el-icon class="drop-icon"><UploadFilled /></el-icon>
+        <span class="dz-glow"></span>
+        <div class="dz-icon">
+          <el-icon :size="30"><UploadFilled /></el-icon>
+        </div>
         <p class="drop-main">点击选择文件，或把文件拖到这里</p>
         <p class="drop-tip">
           支持 PDF / Word / PPT / Excel / 图片 / 压缩包<br />
@@ -39,45 +42,49 @@
     </div>
 
     <!-- ============ 第二步：上传中 ============ -->
-    <div v-else-if="step === 1" class="step-body">
-      <div class="uploading">
-        <p class="file-name">
-          <el-icon><Document /></el-icon>
-          {{ file?.name }}
-          <span class="file-size">{{ formatSize(file?.size) }}</span>
-        </p>
-
-        <el-progress
-          :percentage="percent"
-          :status="percent === 100 ? 'success' : undefined"
-          :stroke-width="14"
-          striped
-          :striped-flow="percent < 100"
-        />
-
-        <p class="status-text">{{ statusText }}</p>
-        <p class="drop-tip">
-          上传过程中请勿关闭本窗口；中途失败也可以重新上传，已传的分片不会重传
-        </p>
+    <div v-else-if="step === 1" class="step-body step-uploading">
+      <div class="up-card">
+        <div class="up-icon">
+          <el-icon :size="22"><Document /></el-icon>
+        </div>
+        <div class="up-info">
+          <p class="file-name ch-ellipsis">{{ file?.name }}</p>
+          <p class="file-size">{{ formatSize(file?.size) }} · {{ statusText }}</p>
+        </div>
+        <span class="up-percent">{{ percent }}%</span>
       </div>
+
+      <el-progress
+        :percentage="percent"
+        :status="percent === 100 ? 'success' : undefined"
+        :stroke-width="12"
+        :show-text="false"
+        striped
+        :striped-flow="percent < 100"
+        class="progress"
+      />
+
+      <p class="up-tip">
+        <el-icon><InfoFilled /></el-icon>
+        上传过程中请勿关闭本窗口；中途失败可重新上传，已传的分片不会重传。
+      </p>
     </div>
 
     <!-- ============ 第三步：填资料信息 ============ -->
     <div v-else class="step-body">
-      <el-alert
-        type="success"
-        :closable="false"
-        class="ok-alert"
-        show-icon
-      >
-        文件已上传完成，请填写资料信息后发布
-      </el-alert>
+      <div class="ok-banner">
+        <el-icon :size="20"><CircleCheckFilled /></el-icon>
+        <div>
+          <strong>文件已上传完成</strong>
+          <p>填写资料信息后即可发布</p>
+        </div>
+      </div>
 
       <el-form
         ref="formRef"
         :model="form"
         :rules="rules"
-        label-width="80px"
+        label-width="84px"
         class="info-form"
       >
         <el-form-item label="资料标题" prop="title">
@@ -96,11 +103,12 @@
         </el-form-item>
 
         <el-form-item label="可见范围" prop="visibility">
-          <el-radio-group v-model="form.visibility">
+          <el-radio-group v-model="form.visibility" class="vis-group">
             <el-radio
               v-for="v in visibilityOptions"
               :key="v.value"
               :value="v.value"
+              border
             >
               {{ v.label }}
             </el-radio>
@@ -122,12 +130,13 @@
     <!-- 底部按钮 -->
     <template #footer>
       <div class="footer">
-        <el-button @click="visible = false">
+        <el-button round @click="visible = false">
           {{ step === 2 ? '取消' : '关闭' }}
         </el-button>
         <el-button
           v-if="step === 2"
           type="primary"
+          round
           :loading="publishing"
           @click="submit"
         >
@@ -150,7 +159,9 @@
  */
 import { ref, reactive, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { UploadFilled, Document } from '@element-plus/icons-vue'
+import {
+  UploadFilled, Document, InfoFilled, CircleCheckFilled
+} from '@element-plus/icons-vue'
 import { chunkUpload, formatSize } from '@/utils/upload'
 import { publishResource } from '@/api/resource'
 
@@ -324,85 +335,206 @@ watch(visible, (v) => {
 
 <style scoped>
 .steps {
-  margin-bottom: 22px;
+  margin-bottom: 26px;
 }
 
 .step-body {
-  min-height: 220px;
+  min-height: 240px;
 }
 
-/* ---------- 拖拽区 ---------- */
+/* =============================================================================
+   第一步：拖拽区
+   ============================================================================= */
 .drop-zone {
+  position: relative;
+  overflow: hidden;
   border: 2px dashed var(--ch-border);
   border-radius: var(--ch-radius-lg);
-  padding: 40px 20px;
+  padding: 46px 24px;
   text-align: center;
   cursor: pointer;
-  transition: all 0.2s ease;
-  background: #fafbfc;
+  transition: var(--ch-transition);
+  background: var(--ch-bg-muted);
 }
 
 .drop-zone:hover,
 .drop-zone.dragging {
   border-color: var(--ch-primary);
-  background: #f0f7ff;
+  background: rgba(79, 70, 229, 0.05);
+  transform: translateY(-2px);
 }
 
-.drop-icon {
-  font-size: 46px;
-  color: var(--ch-primary);
+.dz-glow {
+  position: absolute;
+  width: 220px;
+  height: 220px;
+  top: -120px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: rgba(139, 92, 246, 0.28);
+  filter: blur(60px);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.drop-zone:hover .dz-glow,
+.drop-zone.dragging .dz-glow {
+  opacity: 1;
+}
+
+.dz-icon {
+  position: relative;
+  width: 68px;
+  height: 68px;
+  margin: 0 auto 16px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  background: var(--ch-gradient);
+  box-shadow: var(--ch-shadow-primary);
+  transition: var(--ch-transition);
+}
+
+.drop-zone:hover .dz-icon,
+.drop-zone.dragging .dz-icon {
+  transform: scale(1.08) translateY(-2px);
 }
 
 .drop-main {
-  margin: 12px 0 8px;
-  font-size: 15px;
+  position: relative;
+  margin: 0 0 10px;
+  font-size: 15.5px;
+  font-weight: 600;
   color: var(--ch-text-primary);
 }
 
 .drop-tip {
+  position: relative;
   margin: 0;
-  font-size: 12px;
+  font-size: 12.5px;
   color: var(--ch-text-secondary);
-  line-height: 1.8;
+  line-height: 1.9;
 }
 
-/* ---------- 上传中 ---------- */
-.uploading {
-  padding: 10px 4px;
+/* =============================================================================
+   第二步：上传中
+   ============================================================================= */
+.step-uploading {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 20px;
+  padding-top: 10px;
+}
+
+.up-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  border-radius: var(--ch-radius);
+  background: var(--ch-bg-muted);
+  border: 1px solid var(--ch-border-light);
+}
+
+.up-icon {
+  width: 46px;
+  height: 46px;
+  flex-shrink: 0;
+  border-radius: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  background: var(--ch-gradient);
+  box-shadow: var(--ch-shadow-primary);
+}
+
+.up-info {
+  flex: 1;
+  min-width: 0;
 }
 
 .file-name {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 0 0 14px;
-  font-size: 14px;
-  color: var(--ch-text-primary);
+  margin: 0 0 4px;
+  font-size: 14.5px;
+  font-weight: 600;
 }
 
 .file-size {
+  margin: 0;
+  font-size: 12.5px;
   color: var(--ch-text-secondary);
-  font-size: 12px;
 }
 
-.status-text {
-  margin: 12px 0 6px;
-  font-size: 13px;
+.up-percent {
+  font-size: 20px;
+  font-weight: 800;
   color: var(--ch-primary);
+  letter-spacing: -0.02em;
 }
 
-/* ---------- 填信息 ---------- */
-.ok-alert {
-  margin-bottom: 18px;
+.progress {
+  margin: 0 2px;
+}
+
+.up-tip {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.8;
+  color: var(--ch-text-secondary);
+}
+
+/* =============================================================================
+   第三步：填信息
+   ============================================================================= */
+.ok-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  border-radius: var(--ch-radius);
+  margin-bottom: 22px;
+  color: #047857;
+  background: rgba(16, 185, 129, 0.09);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.ok-banner strong {
+  font-size: 14.5px;
+}
+
+.ok-banner p {
+  margin: 2px 0 0;
+  font-size: 12.5px;
+  color: var(--ch-text-secondary);
 }
 
 .info-form {
   margin-top: 4px;
 }
 
+.vis-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.vis-group :deep(.el-radio.is-bordered) {
+  border-radius: 10px;
+  margin-right: 0;
+}
+
 .radio-tip {
-  margin: 4px 0 0;
-  font-size: 12px;
+  margin: 8px 0 0;
+  font-size: 12.5px;
   color: var(--ch-text-secondary);
   line-height: 1.6;
 }
@@ -411,5 +543,11 @@ watch(visible, (v) => {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+}
+
+@media (max-width: 600px) {
+  .vis-group {
+    flex-direction: column;
+  }
 }
 </style>

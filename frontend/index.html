@@ -4,7 +4,38 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="CourseHub - 课程资料协作平台，让每一份资料都有出处" />
+    <meta
+      name="description"
+      content="CourseHub - 课程资料协作平台，按学院、学期、课程、章节组织资料，让每一份资料都有出处"
+    />
+    <!-- 移动端浏览器地址栏配色，与品牌主色保持一致 -->
+    <meta name="theme-color" content="#4f46e5" />
+
+    <!--
+      首屏样式兜底：Vue 挂载前先渲染一个品牌化的加载态，
+      避免白屏一闪。挂载后 #app 内容会覆盖掉它。
+    -->
+    <style>
+      #app:empty::before {
+        content: '';
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        width: 42px;
+        height: 42px;
+        margin: -21px 0 0 -21px;
+        border-radius: 50%;
+        border: 3px solid rgba(79, 70, 229, 0.18);
+        border-top-color: #4f46e5;
+        animation: app-spin 0.8s linear infinite;
+      }
+      @keyframes app-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+    </style>
+
     <title>CourseHub · 课程资料协作平台</title>
   </head>
   <body>

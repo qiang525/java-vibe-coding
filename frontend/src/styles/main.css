@@ -1,38 +1,212 @@
 /* =============================================================================
-   CourseHub 全局样式
+   CourseHub 全局设计系统
    -----------------------------------------------------------------------------
-   这里放全局生效的样式变量与基础重置，组件内样式写在各自 .vue 的 scoped 中
+   这一份文件定义整个项目的「视觉语言」，可以理解成一张设计规格表：
+     · 第一节 设计令牌（Design Tokens）  —— 颜色、圆角、阴影、动效曲线，统一命名
+     · 第二节 Element Plus 主题覆盖      —— 把默认蓝色换成品牌靛紫渐变
+     · 第三节 基础重置与排版
+     · 第四节 布局容器
+     · 第五节 通用组件类（卡片 / 玻璃 / 渐变文字 …）
+     · 第六节 骨架屏与加载态
+     · 第七节 全局动画
+
+   为什么要有「令牌」这一层？
+     如果每个页面各自写 #4f46e5、16px、0 8px 20px rgba(...)，
+     想统一调色就得翻遍所有文件。把所有会变的值收进 :root 变量后，
+     改一处、全站生效 —— 这就是设计系统最核心的价值。
    ============================================================================= */
 
+/* =============================================================================
+   第一节 · 设计令牌
+   ============================================================================= */
 :root {
-  /* 主题色 */
-  --ch-primary: #409eff;
-  --ch-primary-dark: #337ecc;
+  /* ---------- 品牌色：靛蓝 → 紫罗兰，比纯蓝更有质感 ---------- */
+  --ch-primary: #4f46e5;
+  --ch-primary-dark: #4338ca;
+  --ch-primary-light: #6366f1;
+  --ch-accent: #8b5cf6;
+  --ch-accent-cyan: #06b6d4;
 
-  /* 中性色 */
-  --ch-text-primary: #303133;
-  --ch-text-regular: #606266;
-  --ch-text-secondary: #909399;
-  --ch-text-placeholder: #c0c4cc;
+  /* 品牌渐变（按钮、Logo、封面、标题通用） */
+  --ch-gradient: linear-gradient(135deg, #4f46e5 0%, #7c3aed 52%, #a855f7 100%);
+  --ch-gradient-soft: linear-gradient(135deg, #eef0ff 0%, #f6f0ff 100%);
+  --ch-gradient-hero: linear-gradient(135deg, #1e1b4b 0%, #4c1d95 45%, #6d28d9 100%);
 
-  --ch-border: #dcdfe6;
-  --ch-border-light: #e4e7ed;
-  --ch-bg-page: #f5f7fa;
+  /* ---------- 中性色：偏冷的石板灰，比纯灰更“高级” ---------- */
+  --ch-text-primary: #0f172a;
+  --ch-text-regular: #334155;
+  --ch-text-secondary: #64748b;
+  --ch-text-placeholder: #94a3b8;
+
+  --ch-border: #e2e8f0;
+  --ch-border-light: #eef2f7;
+  --ch-bg-page: #f6f7fb;
   --ch-bg-card: #ffffff;
+  --ch-bg-muted: #f8fafc;
 
-  /* 功能色 */
-  --ch-success: #67c23a;
-  --ch-warning: #e6a23c;
-  --ch-danger: #f56c6c;
+  /* ---------- 功能色 ---------- */
+  --ch-success: #10b981;
+  --ch-warning: #f59e0b;
+  --ch-danger: #ef4444;
+  --ch-info: #06b6d4;
 
-  /* 尺寸 */
-  --ch-radius: 8px;
-  --ch-radius-lg: 12px;
-  --ch-header-height: 60px;
+  /* ---------- 圆角 ---------- */
+  --ch-radius-sm: 8px;
+  --ch-radius: 12px;
+  --ch-radius-lg: 16px;
+  --ch-radius-xl: 22px;
+
+  /* ---------- 阴影：分层次，越靠上的元素阴影越重 ---------- */
+  --ch-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --ch-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
+  --ch-shadow-md: 0 12px 32px rgba(15, 23, 42, 0.09);
+  --ch-shadow-lg: 0 24px 56px rgba(15, 23, 42, 0.13);
+  --ch-shadow-primary: 0 10px 26px rgba(79, 70, 229, 0.28);
+  --ch-ring: 0 0 0 4px rgba(79, 70, 229, 0.14);
+
+  /* ---------- 动效曲线：统一用这条，避免每个组件各写一个 ease ---------- */
+  --ch-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --ch-transition: all 0.25s var(--ch-ease);
+
+  /* ---------- 尺寸 ---------- */
+  --ch-container: 1240px;
+  --ch-header-height: 68px;
 }
 
+/* =============================================================================
+   第二节 · Element Plus 主题覆盖
+   -----------------------------------------------------------------------------
+   Element Plus 的所有组件颜色都从这几个 CSS 变量推导出来。
+   改掉它们，按钮、标签、分页、单选框、链接会同时换成品牌色。
+   ============================================================================= */
+:root {
+  --el-color-primary: #4f46e5;
+  --el-color-primary-light-3: #7c74ea;
+  --el-color-primary-light-5: #a5a0f0;
+  --el-color-primary-light-7: #ceccf6;
+  --el-color-primary-light-8: #e2e1fa;
+  --el-color-primary-light-9: #f0effc;
+  --el-color-primary-dark-2: #3f38b7;
+
+  --el-color-success: #10b981;
+  --el-color-warning: #f59e0b;
+  --el-color-danger: #ef4444;
+  --el-color-error: #ef4444;
+  --el-color-info: #64748b;
+
+  --el-text-color-primary: #0f172a;
+  --el-text-color-regular: #334155;
+  --el-text-color-secondary: #64748b;
+
+  --el-border-color: #e2e8f0;
+  --el-border-color-light: #eef2f7;
+  --el-border-radius-base: 10px;
+  --el-border-radius-small: 8px;
+
+  --el-font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Arial,
+    sans-serif;
+
+  --el-box-shadow-light: 0 4px 16px rgba(15, 23, 42, 0.06);
+}
+
+/* 主按钮换成品牌渐变 —— 比纯色更有质感，也更“高级” */
+.el-button--primary:not(.is-plain):not(.is-link):not(.is-text) {
+  background: var(--ch-gradient);
+  border-color: transparent;
+  box-shadow: 0 6px 16px rgba(79, 70, 229, 0.26);
+  transition: var(--ch-transition);
+}
+
+.el-button--primary:not(.is-plain):not(.is-link):not(.is-text):hover,
+.el-button--primary:not(.is-plain):not(.is-link):not(.is-text):focus {
+  background: linear-gradient(135deg, #4338ca 0%, #6d28d9 100%);
+  border-color: transparent;
+  box-shadow: 0 10px 24px rgba(79, 70, 229, 0.34);
+  transform: translateY(-1px);
+}
+
+.el-button--primary:not(.is-plain):not(.is-link):not(.is-text):active {
+  transform: translateY(0);
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+}
+
+/* 普通按钮也加上一点圆润感和过渡 */
+.el-button {
+  transition: var(--ch-transition);
+}
+
+/* 输入框：圆角 + 聚焦时的柔和光环 */
+.el-input__wrapper,
+.el-textarea__inner {
+  border-radius: 10px;
+}
+
+.el-input__wrapper.is-focus,
+.el-textarea__inner:focus {
+  box-shadow: 0 0 0 1px var(--el-color-primary) inset, var(--ch-ring) !important;
+}
+
+/* 卡片 / 对话框 / 下拉面板统一圆角与投影 */
+.el-dialog {
+  border-radius: var(--ch-radius-xl);
+  overflow: hidden;
+}
+
+.el-dialog__header {
+  margin-right: 0;
+  padding: 20px 24px 14px;
+  border-bottom: 1px solid var(--ch-border-light);
+}
+
+.el-dialog__title {
+  font-weight: 600;
+  color: var(--ch-text-primary);
+}
+
+.el-dialog__body {
+  padding: 22px 24px;
+}
+
+.el-dialog__footer {
+  padding: 14px 24px 20px;
+  border-top: 1px solid var(--ch-border-light);
+}
+
+.el-dropdown-menu,
+.el-select__popper,
+.el-popper {
+  border-radius: var(--ch-radius) !important;
+}
+
+.el-tag {
+  border-radius: 7px;
+  font-weight: 500;
+}
+
+.el-message {
+  border-radius: var(--ch-radius);
+  box-shadow: var(--ch-shadow-md);
+}
+
+.el-pagination.is-background .el-pager li.is-active {
+  background: var(--ch-gradient);
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+}
+
+.el-empty__description p {
+  color: var(--ch-text-secondary);
+}
+
+/* =============================================================================
+   第三节 · 基础重置与排版
+   ============================================================================= */
 * {
   box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 html,
@@ -40,63 +214,288 @@ body {
   margin: 0;
   padding: 0;
   height: 100%;
-  font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB',
-    'Microsoft YaHei', Arial, sans-serif;
+  font-family: var(--el-font-family);
   font-size: 14px;
   color: var(--ch-text-primary);
   background-color: var(--ch-bg-page);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'cv11', 'ss01';
+}
+
+/* 页面背景加两团极淡的彩色光晕，让纯色背景不显得死板 */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(720px 420px at 12% -6%, rgba(99, 102, 241, 0.1), transparent 70%),
+    radial-gradient(680px 400px at 92% 4%, rgba(168, 85, 247, 0.09), transparent 70%);
+  pointer-events: none;
 }
 
 #app {
   min-height: 100vh;
 }
 
+h1, h2, h3, h4 {
+  color: var(--ch-text-primary);
+  letter-spacing: -0.01em;
+}
+
 a {
   color: var(--ch-primary);
   text-decoration: none;
+  transition: var(--ch-transition);
 }
 
 a:hover {
-  color: var(--ch-primary-dark);
+  color: var(--ch-accent);
 }
 
-/* 通用容器：居中 + 最大宽度 */
+/* 文字选中色 */
+::selection {
+  background: rgba(79, 70, 229, 0.16);
+  color: var(--ch-text-primary);
+}
+
+/* 键盘焦点可见（无障碍） */
+:focus-visible {
+  outline: 2px solid var(--ch-primary);
+  outline-offset: 2px;
+}
+
+/* =============================================================================
+   第四节 · 布局容器
+   ============================================================================= */
 .ch-container {
-  max-width: 1200px;
+  max-width: var(--ch-container);
   margin: 0 auto;
-  padding: 0 20px;
+  padding: 0 24px;
 }
 
-/* 通用卡片 */
+/* =============================================================================
+   第五节 · 通用组件类
+   ============================================================================= */
+
+/* ---------- 卡片：白底 + 细描边 + 柔和阴影 ---------- */
 .ch-card {
   background: var(--ch-bg-card);
+  border: 1px solid var(--ch-border-light);
   border-radius: var(--ch-radius-lg);
   padding: 24px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--ch-shadow-sm);
+  transition: var(--ch-transition);
 }
 
-/* 文本溢出省略 */
+/* 可点击卡片：悬停时轻微上浮 + 阴影加深 + 描边染色 */
+.ch-card--interactive {
+  cursor: pointer;
+}
+
+.ch-card--interactive:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--ch-shadow-md);
+  border-color: rgba(99, 102, 241, 0.35);
+}
+
+/* ---------- 毛玻璃：用于顶部导航等悬浮元素 ---------- */
+.ch-glass {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: saturate(180%) blur(16px);
+  -webkit-backdrop-filter: saturate(180%) blur(16px);
+}
+
+/* ---------- 渐变文字 ---------- */
+.ch-gradient-text {
+  background: var(--ch-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+/* ---------- 渐变小徽标（Hero 上的“胶囊标签”） ---------- */
+.ch-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ch-primary-dark);
+  background: rgba(79, 70, 229, 0.09);
+  border: 1px solid rgba(79, 70, 229, 0.16);
+}
+
+/* ---------- 图标磁贴：功能卡/资料卡左侧那个小方块 ---------- */
+.ch-icon-tile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  color: #fff;
+  background: var(--ch-gradient);
+  box-shadow: 0 8px 20px rgba(79, 70, 229, 0.28);
+  flex-shrink: 0;
+}
+
+/* ---------- 页面主标题区 ---------- */
+.ch-page-head h2 {
+  margin: 0 0 6px;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.ch-page-head p {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--ch-text-secondary);
+  line-height: 1.7;
+}
+
+/* ---------- 文本工具 ---------- */
 .ch-ellipsis {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* 滚动条美化 */
+.ch-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.ch-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* =============================================================================
+   第六节 · 骨架屏与加载态
+   -----------------------------------------------------------------------------
+   骨架屏（Skeleton）比「转圈 Loader」体验更好：它提前把内容布局画出来，
+   用户能感知到“马上就有内容”，而不是对着空白等待。
+   ============================================================================= */
+.ch-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: #eceff5;
+  border-radius: var(--ch-radius-sm);
+}
+
+.ch-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.7),
+    transparent
+  );
+  animation: ch-shimmer 1.4s infinite;
+}
+
+/* =============================================================================
+   第七节 · 全局动画（keyframes）
+   ============================================================================= */
+@keyframes ch-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes ch-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ch-float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-14px);
+  }
+}
+
+@keyframes ch-gradient-move {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes ch-pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+/* 入场动画工具类：给元素加 .ch-fade-up 并按需设置延迟 */
+.ch-fade-up {
+  animation: ch-fade-up 0.55s var(--ch-ease) both;
+}
+
+.ch-delay-1 { animation-delay: 0.06s; }
+.ch-delay-2 { animation-delay: 0.12s; }
+.ch-delay-3 { animation-delay: 0.18s; }
+.ch-delay-4 { animation-delay: 0.24s; }
+.ch-delay-5 { animation-delay: 0.3s; }
+.ch-delay-6 { animation-delay: 0.36s; }
+
+/* 尊重系统的“减弱动态效果”设置（无障碍） */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* =============================================================================
+   第八节 · 滚动条
+   ============================================================================= */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #c8c9cc;
-  border-radius: 4px;
+  background: #cbd5e1;
+  border: 2px solid transparent;
+  background-clip: content-box;
+  border-radius: 6px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #a8a9ac;
+  background: #94a3b8;
+  background-clip: content-box;
 }
 
 ::-webkit-scrollbar-track {

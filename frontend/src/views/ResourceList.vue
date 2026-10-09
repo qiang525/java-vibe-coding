@@ -4,46 +4,54 @@
 
     <main class="ch-container main">
       <!-- ========== 搜索区 ========== -->
-      <section class="search-hero ch-card">
-        <h2>资料库</h2>
-        <p class="sub">搜索课程资料、讲义、真题与笔记</p>
+      <section class="search-hero ch-fade-up">
+        <span class="blob blob-1"></span>
+        <span class="blob blob-2"></span>
 
-        <div class="search-bar">
-          <el-input
-            v-model="query.keyword"
-            placeholder="输入关键词搜索，例如：数据结构、线性表、期末真题"
-            size="large"
-            clearable
-            @keyup.enter="handleSearch"
-            @clear="handleSearch"
-          >
-            <template #prefix>
-              <el-icon><Search /></el-icon>
-            </template>
-          </el-input>
-          <el-button type="primary" size="large" @click="handleSearch">
-            搜索
-          </el-button>
-        </div>
+        <div class="sh-inner">
+          <span class="ch-pill sh-pill">
+            <el-icon><Search /></el-icon> 全文检索
+          </span>
+          <h2>在 <span class="ch-gradient-text-light">资料库</span> 里找到你想要的</h2>
+          <p class="sh-sub">讲义、真题与笔记，基于中文全文索引，秒级定位</p>
 
-        <!-- 搜索热词 -->
-        <div v-if="hotKeywords.length" class="hot-words">
-          <span class="hot-label">热门搜索：</span>
-          <el-tag
-            v-for="h in hotKeywords"
-            :key="h.keyword"
-            class="hot-tag"
-            type="info"
-            effect="plain"
-            @click="searchByKeyword(h.keyword)"
-          >
-            {{ h.keyword }}
-          </el-tag>
+          <div class="search-bar">
+            <el-input
+              v-model="query.keyword"
+              placeholder="输入关键词搜索，例如：数据结构、线性表、期末真题"
+              size="large"
+              clearable
+              @keyup.enter="handleSearch"
+              @clear="handleSearch"
+            >
+              <template #prefix>
+                <el-icon><Search /></el-icon>
+              </template>
+            </el-input>
+            <el-button type="primary" size="large" round @click="handleSearch">
+              搜索
+            </el-button>
+          </div>
+
+          <!-- 搜索热词 -->
+          <div v-if="hotKeywords.length" class="hot-words">
+            <span class="hot-label">
+              <el-icon><TrendCharts /></el-icon> 热门搜索
+            </span>
+            <span
+              v-for="h in hotKeywords"
+              :key="h.keyword"
+              class="hot-tag"
+              @click="searchByKeyword(h.keyword)"
+            >
+              {{ h.keyword }}
+            </span>
+          </div>
         </div>
       </section>
 
       <!-- ========== 筛选栏 ========== -->
-      <div class="filter-bar">
+      <div class="filter-bar ch-card ch-fade-up ch-delay-1">
         <el-select
           v-model="query.type"
           placeholder="全部类型"
@@ -87,12 +95,25 @@
       </div>
 
       <!-- ========== 资料列表 ========== -->
-      <div v-loading="loading" class="resource-list">
-        <template v-if="list.length">
+      <div class="resource-list">
+        <!-- 骨架屏 -->
+        <template v-if="loading && !list.length">
+          <div v-for="n in 4" :key="'sk' + n" class="resource-card ch-card">
+            <div class="ch-skeleton sk-icon"></div>
+            <div class="sk-body">
+              <div class="ch-skeleton sk-line" style="width: 40%"></div>
+              <div class="ch-skeleton sk-line" style="width: 95%"></div>
+              <div class="ch-skeleton sk-line" style="width: 65%"></div>
+            </div>
+          </div>
+        </template>
+
+        <template v-else-if="list.length">
           <div
-            v-for="r in list"
+            v-for="(r, i) in list"
             :key="r.id"
-            class="resource-card ch-card"
+            class="resource-card ch-card ch-card--interactive ch-fade-up"
+            :class="`ch-delay-${(i % 4) + 1}`"
             @click="goDetail(r.id)"
           >
             <div class="rc-icon" :class="'type-' + (r.type || 'OTHER')">
@@ -103,40 +124,47 @@
               <h3 class="ch-ellipsis">{{ r.title }}</h3>
 
               <p class="rc-meta">
-                <el-tag size="small" effect="plain">{{ typeLabel(r.type) }}</el-tag>
+                <span class="type-chip">{{ typeLabel(r.type) }}</span>
                 <span class="meta-item">{{ r.courseName || '未分类课程' }}</span>
                 <span class="meta-item" v-if="r.uploaderName">
-                  上传者：{{ r.uploaderName }}
+                  {{ r.uploaderName }}
                 </span>
-                <el-tag
+                <span
                   v-if="r.visibility && r.visibility !== 'PUBLIC'"
-                  size="small"
-                  :type="r.visibility === 'PRIVATE' ? 'danger' : 'warning'"
-                  effect="plain"
+                  class="vis-chip"
+                  :class="r.visibility === 'PRIVATE' ? 'vis-private' : 'vis-course'"
                 >
                   {{ r.visibility === 'PRIVATE' ? '仅自己' : '仅本课程' }}
-                </el-tag>
+                </span>
               </p>
 
-              <p class="rc-desc">{{ r.description || '暂无描述' }}</p>
+              <p class="rc-desc ch-clamp-2">{{ r.description || '暂无描述' }}</p>
 
               <div class="rc-foot">
                 <span class="stat"><el-icon><Document /></el-icon>{{ r.fileName || '无文件' }}</span>
                 <span class="stat" v-if="r.readableSize">{{ r.readableSize }}</span>
                 <span class="stat"><el-icon><View /></el-icon>{{ r.viewCount || 0 }}</span>
                 <span class="stat"><el-icon><Download /></el-icon>{{ r.downloadCount || 0 }}</span>
-                <span class="stat score" v-if="r.relevance !== null && r.relevance !== undefined">
-                  相关度 {{ (r.relevance || 0).toFixed(3) }}
+                <span
+                  class="stat score"
+                  v-if="r.relevance !== null && r.relevance !== undefined"
+                >
+                  <el-icon><Aim /></el-icon>相关度 {{ (r.relevance || 0).toFixed(3) }}
                 </span>
               </div>
             </div>
           </div>
         </template>
 
-        <el-empty
-          v-else-if="!loading"
-          :description="query.keyword ? `没有找到与「${query.keyword}」相关的资料` : '暂无资料'"
-        />
+        <div v-else class="empty-wrap">
+          <el-empty
+            :description="query.keyword ? `没有找到与「${query.keyword}」相关的资料` : '暂无资料'"
+          >
+            <el-button v-if="query.keyword || query.type || query.courseId" @click="handleReset">
+              清空筛选条件
+            </el-button>
+          </el-empty>
+        </div>
       </div>
 
       <!-- ========== 分页 ========== -->
@@ -151,6 +179,8 @@
         />
       </div>
     </main>
+
+    <AppFooter />
   </div>
 </template>
 
@@ -164,8 +194,11 @@
  */
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Search, Document, View, Download } from '@element-plus/icons-vue'
+import {
+  Search, Document, View, Download, TrendCharts, Aim
+} from '@element-plus/icons-vue'
 import AppHeader from '@/components/AppHeader.vue'
+import AppFooter from '@/components/AppFooter.vue'
 import {
   getResources,
   searchResources,
@@ -288,60 +321,144 @@ onMounted(async () => {
 
 <style scoped>
 .main {
-  padding: 26px 20px 48px;
+  padding: 28px 24px 48px;
 }
 
-/* ---------- 搜索区 ---------- */
+/* =============================================================================
+   搜索区（渐变横幅）
+   ============================================================================= */
 .search-hero {
-  margin-bottom: 18px;
+  position: relative;
+  overflow: hidden;
+  border-radius: 24px;
+  background: var(--ch-gradient-hero);
+  padding: 40px 44px;
+  margin-bottom: 20px;
+  box-shadow: 0 24px 56px rgba(49, 27, 146, 0.28);
+}
+
+.blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(64px);
+  pointer-events: none;
+}
+
+.blob-1 {
+  width: 300px;
+  height: 300px;
+  top: -120px;
+  right: -40px;
+  background: rgba(168, 85, 247, 0.55);
+  animation: ch-float 9s ease-in-out infinite;
+}
+
+.blob-2 {
+  width: 240px;
+  height: 240px;
+  bottom: -130px;
+  left: 8%;
+  background: rgba(56, 189, 248, 0.42);
+  animation: ch-float 11s ease-in-out infinite reverse;
+}
+
+.sh-inner {
+  position: relative;
+  z-index: 1;
+}
+
+.sh-pill {
+  color: #e9d5ff;
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .search-hero h2 {
-  margin: 0 0 6px;
-  font-size: 22px;
-  font-weight: 600;
+  margin: 16px 0 8px;
+  font-size: 30px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.02em;
 }
 
-.search-hero .sub {
-  margin: 0 0 18px;
-  font-size: 13px;
-  color: var(--ch-text-secondary);
+.ch-gradient-text-light {
+  background: linear-gradient(120deg, #a5b4fc 0%, #c4b5fd 45%, #f0abfc 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.sh-sub {
+  margin: 0 0 22px;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.75);
 }
 
 .search-bar {
   display: flex;
-  gap: 10px;
-  max-width: 680px;
+  gap: 12px;
+  max-width: 720px;
 }
 
+.search-bar :deep(.el-input__wrapper) {
+  height: 50px;
+  border-radius: 13px;
+  box-shadow: none;
+}
+
+.search-bar :deep(.el-input__inner) {
+  font-size: 14.5px;
+}
+
+.search-bar .el-button {
+  height: 50px;
+  padding: 0 30px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* 热词 */
 .hot-words {
-  margin-top: 14px;
+  margin-top: 18px;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 9px;
 }
 
 .hot-label {
-  font-size: 12px;
-  color: var(--ch-text-secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.65);
 }
 
 .hot-tag {
+  padding: 5px 13px;
+  border-radius: 999px;
+  font-size: 12.5px;
   cursor: pointer;
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  transition: var(--ch-transition);
 }
 
 .hot-tag:hover {
-  color: var(--ch-primary);
-  border-color: var(--ch-primary);
+  background: rgba(255, 255, 255, 0.22);
+  transform: translateY(-1px);
 }
 
-/* ---------- 筛选栏 ---------- */
+/* =============================================================================
+   筛选栏
+   ============================================================================= */
 .filter-bar {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 16px;
+  padding: 14px 18px;
+  margin-bottom: 18px;
   flex-wrap: wrap;
 }
 
@@ -363,45 +480,51 @@ onMounted(async () => {
   color: var(--ch-primary);
 }
 
-/* ---------- 列表 ---------- */
+/* =============================================================================
+   列表
+   ============================================================================= */
 .resource-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
   min-height: 200px;
+}
+
+.empty-wrap {
+  padding: 40px 0;
 }
 
 .resource-card {
   display: flex;
-  gap: 16px;
-  padding: 18px;
-  cursor: pointer;
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
-}
-
-.resource-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.08);
+  gap: 18px;
+  padding: 20px;
 }
 
 .rc-icon {
-  width: 50px;
-  height: 50px;
+  width: 56px;
+  height: 56px;
   flex-shrink: 0;
-  border-radius: 12px;
+  border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
-  font-weight: 600;
+  font-size: 22px;
+  font-weight: 700;
   color: #fff;
-  background: linear-gradient(135deg, #7aa9ff, #4a7dff);
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.16);
+  transition: var(--ch-transition);
 }
 
-.type-EXAM { background: linear-gradient(135deg, #ff9a6b, #f56c6c); }
-.type-NOTES { background: linear-gradient(135deg, #7ad0a3, #3aa76d); }
-.type-TEXTBOOK { background: linear-gradient(135deg, #b39ddb, #7e57c2); }
-.type-VIDEO { background: linear-gradient(135deg, #ffb74d, #f57c00); }
+.resource-card:hover .rc-icon {
+  transform: scale(1.06) rotate(-4deg);
+}
+
+.type-EXAM { background: linear-gradient(135deg, #f97316, #ef4444); }
+.type-NOTES { background: linear-gradient(135deg, #10b981, #059669); }
+.type-TEXTBOOK { background: linear-gradient(135deg, #8b5cf6, #6d28d9); }
+.type-VIDEO { background: linear-gradient(135deg, #f59e0b, #f97316); }
+.type-ASSIGNMENT { background: linear-gradient(135deg, #06b6d4, #0ea5e9); }
 
 .rc-body {
   flex: 1;
@@ -409,55 +532,124 @@ onMounted(async () => {
 }
 
 .rc-body h3 {
-  margin: 0 0 8px;
-  font-size: 16px;
-  font-weight: 600;
+  margin: 4px 0 10px;
+  font-size: 16.5px;
+  font-weight: 700;
 }
 
 .rc-meta {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
-  margin: 0 0 8px;
-  font-size: 12px;
+  gap: 10px;
+  margin: 0 0 10px;
+  font-size: 12.5px;
   color: var(--ch-text-secondary);
 }
 
+.type-chip {
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-weight: 500;
+  color: var(--ch-primary-dark);
+  background: rgba(79, 70, 229, 0.08);
+}
+
+.vis-chip {
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11.5px;
+}
+
+.vis-course {
+  color: #b45309;
+  background: rgba(245, 158, 11, 0.13);
+}
+
+.vis-private {
+  color: #b91c1c;
+  background: rgba(239, 68, 68, 0.12);
+}
+
 .rc-desc {
-  margin: 0 0 10px;
-  font-size: 13px;
+  margin: 0 0 12px;
+  font-size: 13.5px;
   color: var(--ch-text-regular);
-  line-height: 1.6;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  line-height: 1.7;
 }
 
 .rc-foot {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 16px;
-  font-size: 12px;
+  gap: 18px;
+  font-size: 12.5px;
   color: var(--ch-text-secondary);
 }
 
 .stat {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
 }
 
 .stat.score {
   color: var(--ch-primary);
+  font-weight: 500;
+}
+
+/* ---------- 骨架屏 ---------- */
+.sk-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  flex-shrink: 0;
+}
+
+.sk-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 6px;
+}
+
+.sk-line {
+  height: 12px;
 }
 
 /* ---------- 分页 ---------- */
 .pager {
   display: flex;
   justify-content: center;
-  margin-top: 26px;
+  margin-top: 30px;
+}
+
+@media (max-width: 600px) {
+  .main {
+    padding: 20px 16px 40px;
+  }
+
+  .search-hero {
+    padding: 28px 22px;
+    border-radius: 20px;
+  }
+
+  .search-hero h2 {
+    font-size: 23px;
+  }
+
+  .search-bar {
+    flex-direction: column;
+  }
+
+  .filter-item,
+  .filter-item.wide {
+    width: 100%;
+  }
+
+  .result-count {
+    margin-left: 0;
+  }
 }
 </style>
