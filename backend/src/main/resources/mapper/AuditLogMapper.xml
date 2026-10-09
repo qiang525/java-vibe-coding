@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- 审计日志 SQL -->
+<mapper namespace="com.nnuist.coursehub.mapper.AuditLogMapper">
+
+    <insert id="insert" parameterType="AuditLog"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO audit_log
+        (user_id, username, operation, target_type, target_id, detail, ip, created_at)
+        VALUES
+        (#{userId}, #{username}, #{operation}, #{targetType}, #{targetId},
+         #{detail}, #{ip}, NOW())
+    </insert>
+
+    <select id="selectPage" resultType="AuditLog">
+        SELECT id, user_id, username, operation, target_type, target_id,
+               detail, ip, created_at
+        FROM audit_log
+        <where>
+            <if test="userId != null">
+                user_id = #{userId}
+            </if>
+        </where>
+        ORDER BY created_at DESC, id DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="countPage" resultType="long">
+        SELECT COUNT(1)
+        FROM audit_log
+        <where>
+            <if test="userId != null">
+                user_id = #{userId}
+            </if>
+        </where>
+    </select>
+
+</mapper>

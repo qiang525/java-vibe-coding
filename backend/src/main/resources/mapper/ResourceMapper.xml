@@ -222,6 +222,22 @@
         WHERE id = #{id}
     </update>
 
+    <!-- 查出所有资料用于重算评分（定时任务用，数据量大时应改成分页） -->
+    <select id="selectAllForScore" resultType="Resource">
+        SELECT id, course_id, uploader_id, title, description, chapter_id,
+               download_count, view_count, favorite_count, comment_count,
+               avg_rating, rating_count, created_at, status, visibility
+        FROM resource
+        WHERE is_deleted = 0
+          AND status = 'PUBLISHED'
+    </select>
+
+    <update id="updateScore">
+        UPDATE resource
+        SET score = #{score}
+        WHERE id = #{id}
+    </update>
+
     <update id="decreaseCommentCount">
         UPDATE resource
         SET comment_count = comment_count - 1

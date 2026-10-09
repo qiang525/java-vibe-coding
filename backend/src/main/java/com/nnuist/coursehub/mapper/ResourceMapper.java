@@ -87,4 +87,12 @@ public interface ResourceMapper {
 
     /** 评论数 -1 */
     int decreaseCommentCount(@Param("id") Long id);
+
+    /**
+     * 查出所有未删除的资料（供定时任务重算评分）
+     */
+    List<Resource> selectAllForScore();
+
+    /** 更新可信度评分 */
+    int updateScore(@Param("id") Long id, @Param("score") java.math.BigDecimal score);
 }

@@ -52,6 +52,14 @@ public final class UserContext {
     }
 
     /**
+     * 当前用户账号；未登录返回 null
+     */
+    public static String getUsername() {
+        CurrentUser u = HOLDER.get();
+        return u == null ? null : u.getUsername();
+    }
+
+    /**
      * 当前用户角色；未登录返回 null
      */
     public static String getRole() {
