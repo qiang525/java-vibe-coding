@@ -7,6 +7,7 @@ import com.nnuist.coursehub.dto.ResourceQueryDTO;
 import com.nnuist.coursehub.dto.ResourceSaveDTO;
 import com.nnuist.coursehub.service.ResourceService;
 import com.nnuist.coursehub.vo.FileDownloadResult;
+import com.nnuist.coursehub.vo.HotKeywordVO;
 import com.nnuist.coursehub.vo.ResourceVO;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -59,6 +60,36 @@ public class ResourceController {
     @GetMapping
     public Result<PageResult<ResourceVO>> list(ResourceQueryDTO query) {
         return Result.ok(resourceService.pageResources(query));
+    }
+
+    /**
+     * 全文检索
+     *
+     * <pre>
+     * GET /api/resources/search?keyword=线性表&page=1&pageSize=10
+     * </pre>
+     *
+     * <p>走 MySQL 的 ngram 全文索引，结果按<b>相关度</b>排序，
+     * 并且同样遵守三级可见性（搜不到你没有权限看的资料）。</p>
+     */
+    @ApiOperation("全文检索资料（按相关度排序）")
+    @GetMapping("/search")
+    public Result<PageResult<ResourceVO>> search(ResourceQueryDTO query) {
+        return Result.ok(resourceService.search(query));
+    }
+
+    /**
+     * 搜索热词
+     *
+     * <pre>
+     * GET /api/resources/search/hot?limit=10
+     * </pre>
+     */
+    @ApiOperation("搜索热词（Redis ZSet）")
+    @GetMapping("/search/hot")
+    public Result<java.util.List<HotKeywordVO>> hotKeywords(
+            @RequestParam(defaultValue = "10") int limit) {
+        return Result.ok(resourceService.hotKeywords(limit));
     }
 
     @ApiOperation("资料详情")

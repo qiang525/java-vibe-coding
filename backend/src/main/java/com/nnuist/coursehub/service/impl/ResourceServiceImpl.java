@@ -18,9 +18,12 @@ import com.nnuist.coursehub.mapper.ResourceVersionMapper;
 import com.nnuist.coursehub.service.FileService;
 import com.nnuist.coursehub.service.ResourceService;
 import com.nnuist.coursehub.vo.FileDownloadResult;
+import com.nnuist.coursehub.vo.HotKeywordVO;
 import com.nnuist.coursehub.vo.ResourceVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -53,6 +57,7 @@ public class ResourceServiceImpl implements ResourceService {
     private final CourseMapper courseMapper;
     private final FileMapper fileMapper;
     private final FileService fileService;
+    private final RedisTemplate<String, Object> redisTemplate;
 
     private static final String DEFAULT_TYPE = "OTHER";
     private static final String DEFAULT_VISIBILITY = "PUBLIC";
@@ -110,6 +115,103 @@ public class ResourceServiceImpl implements ResourceService {
         Course course = courseMapper.selectById(vo.getCourseId());
         fillExtra(vo, course == null ? null : course.getOwnerId());
         return vo;
+    }
+
+    // =========================================================================
+    //  全文检索
+    // =========================================================================
+
+    /**
+     * 搜索热词的 Redis key
+     */
+    private static final String HOT_KEYWORD_KEY =
+            com.nnuist.coursehub.common.constant.Constants.REDIS_SEARCH_CACHE + "hot";
+
+    @Override
+    public PageResult<ResourceVO> search(ResourceQueryDTO query) {
+        // 关键词为空 → 退化成普通列表（否则 MATCH 语法会报错）
+        if (isBlank(query.getKeyword())) {
+            return pageResources(query);
+        }
+
+        query.setCurrentUserId(UserContext.getUserId());
+        query.setIsAdmin(UserContext.isAdmin());
+
+        String keyword = query.getKeyword().trim();
+
+        long total = resourceMapper.countSearch(query);
+        if (total == 0) {
+            // 即使没搜到结果也要记一笔 —— 用户确实搜过这个词，
+            // 而且"搜不到"的词往往更能反映真实需求（说明资源缺失）
+            recordKeyword(keyword);
+            return PageResult.empty(query.getPage(), query.getPageSize());
+        }
+
+        List<ResourceVO> list = resourceMapper.searchPage(query);
+
+        // 同样的 N+1 规避：批量查课程负责人
+        Set<Long> courseIds = list.stream()
+                .map(ResourceVO::getCourseId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<Long, Long> ownerMap = courseIds.isEmpty()
+                ? Collections.emptyMap()
+                : courseMapper.selectByIds(new ArrayList<>(courseIds)).stream()
+                        .collect(Collectors.toMap(Course::getId, Course::getOwnerId, (a, b) -> a));
+
+        list.forEach(vo -> fillExtra(vo, ownerMap.get(vo.getCourseId())));
+
+        // 记录热词
+        recordKeyword(keyword);
+
+        log.info("全文检索 | keyword={} | 命中 {} 条", keyword, total);
+        return new PageResult<>(list, total, query.getPage(), query.getPageSize());
+    }
+
+    @Override
+    public List<HotKeywordVO> hotKeywords(int limit) {
+        int size = (limit <= 0 || limit > 50) ? 10 : limit;
+        try {
+            // ZSet 按分数倒序取前 N 个
+            Set<ZSetOperations.TypedTuple<Object>> tuples =
+                    redisTemplate.opsForZSet().reverseRangeWithScores(HOT_KEYWORD_KEY, 0, size - 1);
+            if (tuples == null || tuples.isEmpty()) {
+                return Collections.emptyList();
+            }
+            List<HotKeywordVO> result = new ArrayList<>(tuples.size());
+            for (ZSetOperations.TypedTuple<Object> t : tuples) {
+                if (t.getValue() == null) {
+                    continue;
+                }
+                result.add(new HotKeywordVO(
+                        t.getValue().toString(),
+                        t.getScore() == null ? 0L : t.getScore().longValue()));
+            }
+            return result;
+        } catch (Exception e) {
+            // Redis 挂了不影响正常使用，只是热词拿不到
+            log.warn("读取搜索热词失败 | error={}", e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
+    /**
+     * 记录一次搜索
+     *
+     * <p>用 ZSet 的 {@code ZINCRBY}：每搜一次该关键词的分数 +1，
+     * 天然支持"排序取前 N"。整个 ZSet 设 7 天过期，避免历史数据无限增长。</p>
+     */
+    private void recordKeyword(String keyword) {
+        if (isBlank(keyword) || keyword.length() > 50) {
+            return;
+        }
+        try {
+            redisTemplate.opsForZSet().incrementScore(HOT_KEYWORD_KEY, keyword, 1);
+            redisTemplate.expire(HOT_KEYWORD_KEY, 7, TimeUnit.DAYS);
+        } catch (Exception e) {
+            // 记录热词失败不影响搜索本身
+            log.warn("记录搜索热词失败 | keyword={} | error={}", keyword, e.getMessage());
+        }
     }
 
     // =========================================================================

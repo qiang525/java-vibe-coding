@@ -4,7 +4,10 @@ import com.nnuist.coursehub.common.page.PageResult;
 import com.nnuist.coursehub.dto.ResourceQueryDTO;
 import com.nnuist.coursehub.dto.ResourceSaveDTO;
 import com.nnuist.coursehub.vo.FileDownloadResult;
+import com.nnuist.coursehub.vo.HotKeywordVO;
 import com.nnuist.coursehub.vo.ResourceVO;
+
+import java.util.List;
 
 /**
  * 资料业务接口
@@ -22,6 +25,23 @@ public interface ResourceService {
      * <p>结果<b>已按当前用户的可见性权限过滤</b>，调用方不需再判权限。</p>
      */
     PageResult<ResourceVO> pageResources(ResourceQueryDTO query);
+
+    /**
+     * 全文检索资料
+     *
+     * <p>与 {@link #pageResources} 的区别：本方法用 MySQL 的 ngram 全文索引
+     * （{@code MATCH ... AGAINST}），并按<b>相关度</b>排序，而不是简单的时间倒序。</p>
+     *
+     * <p>关键词为空时会自动退化成普通列表查询。</p>
+     */
+    PageResult<ResourceVO> search(ResourceQueryDTO query);
+
+    /**
+     * 获取搜索热词（按搜索次数倒序）
+     *
+     * <p>数据来自 Redis 的 ZSet，每次搜索都会给对应关键词加分。</p>
+     */
+    List<HotKeywordVO> hotKeywords(int limit);
 
     /**
      * 查询资料详情

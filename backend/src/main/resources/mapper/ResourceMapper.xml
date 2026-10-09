@@ -201,4 +201,66 @@
         WHERE id = #{id}
     </update>
 
+    <!--
+        ====================================================================
+         全文检索
+        ====================================================================
+        用 MATCH ... AGAINST 而不是 LIKE '%x%'：
+          · LIKE 开头带通配符 → 索引用不上 → 全表扫描
+          · MATCH 走 ngram 全文索引 → 快，而且能算相关度
+
+        "IN BOOLEAN MODE" 允许更灵活的匹配（不必所有词都命中）。
+        ngram 分词器会把"数据结构"切成 2 字词组来建索引。
+    -->
+    <sql id="Search_Condition">
+        AND r.is_deleted = 0
+        AND r.status = 'PUBLISHED'
+        AND MATCH(r.title, r.description) AGAINST(#{q.keyword} IN BOOLEAN MODE)
+        <if test="q.courseId != null">
+            AND r.course_id = #{q.courseId}
+        </if>
+        <if test="q.type != null and q.type != ''">
+            AND r.type = #{q.type}
+        </if>
+        <!-- 搜索同样要遵守三级可见性 -->
+        <if test="q.isAdmin == null or q.isAdmin == false">
+            AND (
+                r.visibility = 'PUBLIC'
+                <if test="q.currentUserId != null">
+                    OR r.uploader_id = #{q.currentUserId}
+                    OR (r.visibility = 'COURSE_ONLY' AND EXISTS (
+                            SELECT 1 FROM course_member cm
+                            WHERE cm.course_id = r.course_id
+                              AND cm.user_id = #{q.currentUserId}
+                        ))
+                    OR EXISTS (
+                        SELECT 1 FROM course c2
+                        WHERE c2.id = r.course_id AND c2.owner_id = #{q.currentUserId}
+                    )
+                </if>
+            )
+        </if>
+    </sql>
+
+    <select id="searchPage" resultType="ResourceVO">
+        SELECT
+        <include refid="VO_Column_List"/>,
+        MATCH(r.title, r.description) AGAINST(#{q.keyword} IN BOOLEAN MODE) AS relevance
+        <include refid="VO_Joins"/>
+        <where>
+            <include refid="Search_Condition"/>
+        </where>
+        <!-- 先按相关度，再按可信度评分，最后按时间 -->
+        ORDER BY relevance DESC, r.score DESC, r.created_at DESC
+        LIMIT #{q.offset}, #{q.pageSize}
+    </select>
+
+    <select id="countSearch" resultType="long">
+        SELECT COUNT(1)
+        FROM resource r
+        <where>
+            <include refid="Search_Condition"/>
+        </where>
+    </select>
+
 </mapper>

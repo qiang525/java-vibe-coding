@@ -105,6 +105,9 @@ public class ResourceVO implements Serializable {
     @ApiModelProperty("当前用户是否有权修改这条资料")
     private Boolean canEdit;
 
+    @ApiModelProperty("搜索相关度（仅搜索接口返回，越大越相关）")
+    private Double relevance;
+
     @ApiModelProperty("创建时间")
     private LocalDateTime createdAt;
 

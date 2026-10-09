@@ -31,6 +31,23 @@ public interface ResourceMapper {
     long countPage(@Param("q") ResourceQueryDTO query);
 
     /**
+     * 全文检索（按相关度排序）
+     *
+     * <p>用 MySQL 的 {@code MATCH ... AGAINST} 走 ngram 全文索引，
+     * 而不是 {@code LIKE '%关键词%'}。区别在于：</p>
+     * <ul>
+     *   <li>{@code LIKE '%x%'} 开头是通配符，<b>用不到索引</b>，数据量大后必然全表扫描</li>
+     *   <li>{@code MATCH} 走全文索引，且能算出"相关度分数"用于排序</li>
+     * </ul>
+     */
+    List<ResourceVO> searchPage(@Param("q") ResourceQueryDTO query);
+
+    /**
+     * 统计搜索结果总数
+     */
+    long countSearch(@Param("q") ResourceQueryDTO query);
+
+    /**
      * 查资料详情（<b>不做</b>可见性过滤）
      *
      * <p>刻意不做过滤，是为了在 Service 层区分两种结果：</p>
