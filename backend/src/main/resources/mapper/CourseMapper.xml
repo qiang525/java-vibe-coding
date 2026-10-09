@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+    课程模块 SQL 映射文件
+    ============================================================
+    本文件演示了 MyBatis 最实用的两个能力：
+      1. 动态 SQL（<if>）—— 一个查询支持多种筛选条件组合
+      2. JOIN 带出关联字段 —— 让前端拿到就能直接显示，不用再查一次
+-->
+<mapper namespace="com.nnuist.coursehub.mapper.CourseMapper">
+
+    <!-- 列表/详情返回的字段：用 LEFT JOIN 把学院名带出来 -->
+    <sql id="VO_Column_List">
+        c.id, c.course_code, c.name, c.college_id, col.name AS college_name,
+        c.teacher, c.term, c.credit, c.cover, c.description,
+        c.owner_id, c.member_count, c.resource_count, c.status, c.created_at
+    </sql>
+
+    <!--
+        公共查询条件
+        用 <where> 标签：它会自动去掉第一个多余的 AND，
+        这样就不用写 "WHERE 1=1" 那种凑数写法了
+    -->
+    <sql id="Query_Where">
+        <where>
+            c.is_deleted = 0
+            <if test="q.keyword != null and q.keyword != ''">
+                AND (c.name LIKE CONCAT('%', #{q.keyword}, '%')
+                OR c.teacher LIKE CONCAT('%', #{q.keyword}, '%'))
+            </if>
+            <if test="q.collegeId != null">
+                AND c.college_id = #{q.collegeId}
+            </if>
+            <if test="q.term != null and q.term != ''">
+                AND c.term = #{q.term}
+            </if>
+            <if test="q.status != null and q.status != ''">
+                AND c.status = #{q.status}
+            </if>
+            <if test="q.ownerId != null">
+                AND c.owner_id = #{q.ownerId}
+            </if>
+            <!-- 查「我加入的课程」：用 EXISTS 子查询，比 JOIN 再去重更直观 -->
+            <if test="q.memberUserId != null">
+                AND EXISTS (
+                    SELECT 1 FROM course_member cm
+                    WHERE cm.course_id = c.id
+                      AND cm.user_id = #{q.memberUserId}
+                )
+            </if>
+        </where>
+    </sql>
+
+    <!-- 分页查询 -->
+    <select id="selectPage" resultType="CourseVO">
+        SELECT
+        <include refid="VO_Column_List"/>
+        FROM course c
+        LEFT JOIN sys_college col ON col.id = c.college_id
+        <include refid="Query_Where"/>
+        ORDER BY c.created_at DESC, c.id DESC
+        LIMIT #{q.offset}, #{q.pageSize}
+    </select>
+
+    <!-- 统计总数（条件必须与上面完全一致，否则分页数字对不上） -->
+    <select id="countPage" resultType="long">
+        SELECT COUNT(1)
+        FROM course c
+        <include refid="Query_Where"/>
+    </select>
+
+    <!-- 课程详情 -->
+    <select id="selectVOById" resultType="CourseVO">
+        SELECT
+        <include refid="VO_Column_List"/>
+        FROM course c
+        LEFT JOIN sys_college col ON col.id = c.college_id
+        WHERE c.id = #{id}
+          AND c.is_deleted = 0
+        LIMIT 1
+    </select>
+
+    <!-- 课程实体（Service 判断权限用，不需要学院名） -->
+    <select id="selectById" resultType="Course">
+        SELECT id, college_id, course_code, name, teacher, term, credit, cover,
+               description, owner_id, member_count, resource_count, status,
+               created_at, updated_at, is_deleted
+        FROM course
+        WHERE id = #{id}
+          AND is_deleted = 0
+        LIMIT 1
+    </select>
+
+    <insert id="insert" parameterType="Course"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO course
+        (college_id, course_code, name, teacher, term, credit, cover, description,
+         owner_id, member_count, resource_count, status, created_at, updated_at, is_deleted)
+        VALUES
+        (#{collegeId}, #{courseCode}, #{name}, #{teacher}, #{term}, #{credit}, #{cover},
+         #{description}, #{ownerId}, #{memberCount}, #{resourceCount}, #{status},
+         NOW(), NOW(), 0)
+    </insert>
+
+    <!--
+        动态更新：只更新传了值的字段
+        <set> 标签会自动去掉末尾多余的逗号
+    -->
+    <update id="update" parameterType="Course">
+        UPDATE course
+        <set>
+            <if test="collegeId != null">college_id = #{collegeId},</if>
+            <if test="courseCode != null">course_code = #{courseCode},</if>
+            <if test="name != null">name = #{name},</if>
+            <if test="teacher != null">teacher = #{teacher},</if>
+            <if test="term != null">term = #{term},</if>
+            <if test="credit != null">credit = #{credit},</if>
+            <if test="cover != null">cover = #{cover},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="status != null">status = #{status},</if>
+            updated_at = NOW()
+        </set>
+        WHERE id = #{id}
+          AND is_deleted = 0
+    </update>
+
+    <!-- 逻辑删除：只把标记位改成 1，数据仍在库中 -->
+    <update id="softDelete">
+        UPDATE course
+        SET is_deleted = 1,
+            updated_at = NOW()
+        WHERE id = #{id}
+          AND is_deleted = 0
+    </update>
+
+    <!-- ==================== 课程成员 ==================== -->
+
+    <select id="countMember" resultType="int">
+        SELECT COUNT(1)
+        FROM course_member
+        WHERE course_id = #{courseId}
+          AND user_id = #{userId}
+    </select>
+
+    <insert id="insertMember">
+        INSERT INTO course_member (course_id, user_id, role, joined_at)
+        VALUES (#{courseId}, #{userId}, #{role}, NOW())
+    </insert>
+
+    <delete id="deleteMember">
+        DELETE FROM course_member
+        WHERE course_id = #{courseId}
+          AND user_id = #{userId}
+    </delete>
+
+    <update id="increaseMemberCount">
+        UPDATE course
+        SET member_count = member_count + #{delta}
+        WHERE id = #{courseId}
+          AND member_count + #{delta} >= 0
+    </update>
+
+</mapper>

@@ -63,6 +63,8 @@ public enum ResultCode {
     VERSION_CONFLICT(40903, "该资料已有新版本，请先查看差异"),
     OPERATION_NOT_ALLOWED(40904, "当前状态不允许该操作"),
     ALREADY_COLLECTED(40905, "已经收藏过了"),
+    ALREADY_JOINED(40906, "你已经加入该课程了"),
+    NOT_JOINED(40907, "你尚未加入该课程"),
 
     // ==================== 文件相关 41xxx ====================
     FILE_EMPTY(41001, "上传文件为空"),

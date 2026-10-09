@@ -59,7 +59,9 @@ mybatis:
   # Mapper XML 文件位置
   mapper-locations: classpath:mapper/*.xml
   # 实体类包路径，XML 里可直接写类名而不用全限定名
-  type-aliases-package: com.nnuist.coursehub.entity
+  # 多个包用英文逗号分隔：entity（表实体）+ vo（视图对象，如 CourseVO）
+  # 不注册 vo 包的话，XML 里的 resultType="CourseVO" 会报 ClassNotFoundException
+  type-aliases-package: com.nnuist.coursehub.entity,com.nnuist.coursehub.vo
   configuration:
     # 数据库下划线字段 → Java 驼峰属性 自动映射
     # 例如 create_time → createTime

@@ -17,6 +17,12 @@ const routes = [
     meta: { title: '首页', requiresAuth: false }
   },
   {
+    path: '/courses',
+    name: 'CourseList',
+    component: () => import('@/views/CourseList.vue'),
+    meta: { title: '课程库', requiresAuth: false }
+  },
+  {
     path: '/login',
     name: 'Login',
     component: () => import('@/views/Login.vue'),

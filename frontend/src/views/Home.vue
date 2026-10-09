@@ -1,23 +1,7 @@
 <template>
   <div class="home">
-    <!-- ========== 顶部导航 ========== -->
-    <header class="site-header">
-      <div class="ch-container header-inner">
-        <div class="brand">
-          <div class="logo">CH</div>
-          <div class="brand-text">
-            <h1>CourseHub</h1>
-            <p>让每一份资料都有出处</p>
-          </div>
-        </div>
-        <nav class="nav">
-          <a href="#/" class="nav-link active">首页</a>
-          <a href="#/courses" class="nav-link">课程</a>
-          <a href="#/resources" class="nav-link">资料库</a>
-          <el-button type="primary" size="default" @click="goLogin">登录</el-button>
-        </nav>
-      </div>
-    </header>
+    <!-- ========== 顶部导航（公用组件） ========== -->
+    <AppHeader active="home" />
 
     <!-- ========== 主体 ========== -->
     <main class="ch-container main">
@@ -113,10 +97,8 @@
  * 加载时会自动调用后端 /api/health，成功则显示绿色状态卡与后端信息。
  */
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { getHealth } from '@/api/health'
-
-const router = useRouter()
+import AppHeader from '@/components/AppHeader.vue'
 
 const loading = ref(false)
 const healthData = ref(null)
@@ -156,8 +138,8 @@ const features = [
   }
 ]
 
-// 里程碑当前进度（M0 已完成）
-const currentStage = ref(1)
+// 里程碑当前进度（M0、M1 已完成，进入 M2）
+const currentStage = ref(2)
 
 const statusClass = computed(() => ({
   'status-ok': healthData.value && !errorMsg.value,
@@ -198,79 +180,10 @@ async function checkHealth() {
   }
 }
 
-function goLogin() {
-  router.push('/login')
-}
-
 onMounted(checkHealth)
 </script>
 
 <style scoped>
-/* ---------- 顶部导航 ---------- */
-.site-header {
-  background: #fff;
-  border-bottom: 1px solid var(--ch-border-light);
-  position: sticky;
-  top: 0;
-  z-index: 100;
-}
-
-.header-inner {
-  height: var(--ch-header-height);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.logo {
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #409eff, #337ecc);
-  color: #fff;
-  font-weight: 700;
-  font-size: 15px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  letter-spacing: 0.5px;
-}
-
-.brand-text h1 {
-  margin: 0;
-  font-size: 17px;
-  font-weight: 600;
-  line-height: 1.2;
-}
-
-.brand-text p {
-  margin: 2px 0 0;
-  font-size: 12px;
-  color: var(--ch-text-secondary);
-}
-
-.nav {
-  display: flex;
-  align-items: center;
-  gap: 24px;
-}
-
-.nav-link {
-  color: var(--ch-text-regular);
-  font-size: 14px;
-}
-
-.nav-link.active,
-.nav-link:hover {
-  color: var(--ch-primary);
-}
-
 /* ---------- 主体 ---------- */
 .main {
   padding: 32px 20px 48px;

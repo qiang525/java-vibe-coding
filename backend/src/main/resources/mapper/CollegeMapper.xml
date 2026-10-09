@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+    学院模块 SQL 映射文件
+    namespace 必须与 CollegeMapper 接口全限定名一致
+-->
+<mapper namespace="com.nnuist.coursehub.mapper.CollegeMapper">
+
+    <sql id="Base_Column_List">
+        id, name, code, sort_order, created_at
+    </sql>
+
+    <!-- 查询全部学院，排序字段越小越靠前 -->
+    <select id="selectAll" resultType="College">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM sys_college
+        ORDER BY sort_order ASC, id ASC
+    </select>
+
+    <select id="selectById" resultType="College">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM sys_college
+        WHERE id = #{id}
+        LIMIT 1
+    </select>
+
+    <insert id="insert" parameterType="College"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO sys_college (name, code, sort_order, created_at)
+        VALUES (#{name}, #{code}, #{sortOrder}, NOW())
+    </insert>
+
+</mapper>
