@@ -1,0 +1,72 @@
+# =============================================================================
+#  生产环境配置 (prod)
+# -----------------------------------------------------------------------------
+#  激活方式：java -jar app.jar --spring.profiles.active=prod
+#
+#  ⚠️ 所有敏感信息必须通过环境变量注入，禁止写死在文件里：
+#     DB_HOST / DB_PORT / DB_NAME / DB_USERNAME / DB_PASSWORD
+#     REDIS_HOST / REDIS_PORT / REDIS_PASSWORD
+#     JWT_SECRET
+# =============================================================================
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:coursehub}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=true&rewriteBatchedStatements=true
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD}
+    type: com.alibaba.druid.pool.DruidDataSource
+    druid:
+      initial-size: 10
+      min-idle: 10
+      max-active: 50
+      max-wait: 60000
+      validation-query: SELECT 1
+      test-while-idle: true
+      time-between-eviction-runs-millis: 60000
+      min-evictable-idle-time-millis: 300000
+      filters: stat,wall
+      # 生产环境关闭 Druid 监控页面，避免暴露数据库信息
+      stat-view-servlet:
+        enabled: false
+      web-stat-filter:
+        enabled: false
+
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD:}
+    database: 0
+    timeout: 3000ms
+    lettuce:
+      pool:
+        max-active: 50
+        max-idle: 20
+        min-idle: 10
+        max-wait: 3000ms
+
+mybatis:
+  configuration:
+    # 生产环境关闭 SQL 打印，避免日志爆炸 + 泄露表结构
+    log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
+
+logging:
+  level:
+    root: warn
+    com.nnuist.coursehub: info
+  file:
+    name: ./logs/coursehub.log
+  logback:
+    rollingpolicy:
+      max-file-size: 100MB
+      max-history: 30
+
+# 生产环境关闭接口文档
+knife4j:
+  enable: false
+  production: true
+
+server:
+  tomcat:
+    threads:
+      max: 500
+      min-spare: 50

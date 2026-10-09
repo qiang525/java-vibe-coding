@@ -77,3 +77,9 @@ tmp/
 # ================= 系统 =================
 Thumbs.db
 $RECYCLE.BIN/
+
+# ================= 本地验收脚本产生的日志 =================
+backend/m0-verify.log
+backend/app-run.log
+backend/compile.log
+backend/app.log

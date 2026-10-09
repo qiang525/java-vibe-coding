@@ -1,0 +1,104 @@
+/* =============================================================================
+   CourseHub 全局样式
+   -----------------------------------------------------------------------------
+   这里放全局生效的样式变量与基础重置，组件内样式写在各自 .vue 的 scoped 中
+   ============================================================================= */
+
+:root {
+  /* 主题色 */
+  --ch-primary: #409eff;
+  --ch-primary-dark: #337ecc;
+
+  /* 中性色 */
+  --ch-text-primary: #303133;
+  --ch-text-regular: #606266;
+  --ch-text-secondary: #909399;
+  --ch-text-placeholder: #c0c4cc;
+
+  --ch-border: #dcdfe6;
+  --ch-border-light: #e4e7ed;
+  --ch-bg-page: #f5f7fa;
+  --ch-bg-card: #ffffff;
+
+  /* 功能色 */
+  --ch-success: #67c23a;
+  --ch-warning: #e6a23c;
+  --ch-danger: #f56c6c;
+
+  /* 尺寸 */
+  --ch-radius: 8px;
+  --ch-radius-lg: 12px;
+  --ch-header-height: 60px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', Arial, sans-serif;
+  font-size: 14px;
+  color: var(--ch-text-primary);
+  background-color: var(--ch-bg-page);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#app {
+  min-height: 100vh;
+}
+
+a {
+  color: var(--ch-primary);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--ch-primary-dark);
+}
+
+/* 通用容器：居中 + 最大宽度 */
+.ch-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* 通用卡片 */
+.ch-card {
+  background: var(--ch-bg-card);
+  border-radius: var(--ch-radius-lg);
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+/* 文本溢出省略 */
+.ch-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 滚动条美化 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c8c9cc;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a9ac;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}

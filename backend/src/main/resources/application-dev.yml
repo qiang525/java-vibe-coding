@@ -1,0 +1,77 @@
+# =============================================================================
+#  开发环境配置 (dev)
+# -----------------------------------------------------------------------------
+#  激活方式：spring.profiles.active=dev（已在 application.yml 里设为默认）
+#
+#  ⚠️ 数据库密码不写在这里！
+#     密码放在 application-local.yml（已被 .gitignore 忽略，不会上传 GitHub）
+#     首次运行请把 application-local.yml.example 复制为 application-local.yml
+#     并填入你自己的密码。
+#
+#  ⚠️ 注意：本文件千万不要写 password 字段。
+#     因为 import 进来的文件优先级低于本文件，一旦这里写了 password，
+#     就会覆盖掉 application-local.yml 里的真实密码，导致连接失败。
+# =============================================================================
+spring:
+  # 导入本地私有配置（含数据库密码）。optional 表示文件不存在也不报错
+  config:
+    import: optional:classpath:application-local.yml
+
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/coursehub?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true
+    username: root
+    # password 字段留空不写，由 application-local.yml 提供
+    type: com.alibaba.druid.pool.DruidDataSource
+    druid:
+      # 连接池核心配置
+      initial-size: 5
+      min-idle: 5
+      max-active: 20
+      max-wait: 60000
+      # 连接有效性检测
+      validation-query: SELECT 1
+      test-while-idle: true
+      test-on-borrow: false
+      test-on-return: false
+      time-between-eviction-runs-millis: 60000
+      min-evictable-idle-time-millis: 300000
+      # 监控过滤器（开发环境开启慢 SQL 记录）
+      filters: stat,wall,slf4j
+      connection-properties: druid.stat.mergeSql=true;druid.stat.slowSqlMillis=1000
+      stat-view-servlet:
+        enabled: true
+        url-pattern: /druid/*
+        login-username: admin
+        login-password: ${DRUID_PASSWORD:admin}
+        allow: 127.0.0.1
+        reset-enable: false
+      web-stat-filter:
+        enabled: true
+        url-pattern: /*
+        exclusions: "*.js,*.gif,*.jpg,*.png,*.css,*.ico,/druid/*"
+
+  # Redis 配置
+  redis:
+    host: localhost
+    port: 6379
+    database: 0
+    timeout: 3000ms
+    lettuce:
+      pool:
+        max-active: 20
+        max-idle: 10
+        min-idle: 5
+        max-wait: 3000ms
+
+# 开发环境日志级别
+logging:
+  level:
+    root: info
+    com.nnuist.coursehub: debug
+    com.nnuist.coursehub.mapper: debug
+    org.springframework.web: info
+
+# 开发环境开启接口文档
+knife4j:
+  enable: true
