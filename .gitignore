@@ -89,3 +89,4 @@ frontend/dev-server.log
 frontend/integration-verify.log
 backend/m0-verify.log
 backend/app-run.log
+backend/m1-verify.log

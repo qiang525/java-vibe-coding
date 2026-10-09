@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+    用户模块 SQL 映射文件
+    ============================================================
+    namespace 必须与 Mapper 接口的全限定名完全一致，
+    MyBatis 靠它把接口方法和下面的 SQL 关联起来。
+
+    注意：
+      1. 所有字段用 #{}, 绝不用 ${}（${} 会被拼接成字符串，有 SQL 注入风险）
+      2. 用 <sql> 抽公共片段，避免 SELECT 字段列表到处重复
+-->
+<mapper namespace="com.nnuist.coursehub.mapper.UserMapper">
+
+    <!-- 公共字段列表：所有查询都复用这一段，改字段时只需改一处 -->
+    <sql id="Base_Column_List">
+        id, username, password, nickname, avatar, email, student_no, college_id,
+        role, credit_score, level, status, last_login_at, created_at, updated_at, is_deleted
+    </sql>
+
+    <!--
+        按账号查询
+        resultType="User" 能简写是因为 application.yml 里配了
+        type-aliases-package，MyBatis 会自动去那个包找 User 类
+        下划线转驼峰由 map-underscore-to-camel-case=true 自动完成
+    -->
+    <select id="selectByUsername" resultType="User">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM sys_user
+        WHERE username = #{username}
+          AND is_deleted = 0
+        LIMIT 1
+    </select>
+
+    <!-- 按主键查询 -->
+    <select id="selectById" resultType="User">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM sys_user
+        WHERE id = #{id}
+          AND is_deleted = 0
+        LIMIT 1
+    </select>
+
+    <!--
+        统计账号是否存在
+        返回 int 而不是 User，因为只需要知道"有没有"，不用把整行数据取回来
+    -->
+    <select id="countByUsername" resultType="int">
+        SELECT COUNT(1)
+        FROM sys_user
+        WHERE username = #{username}
+          AND is_deleted = 0
+    </select>
+
+    <!--
+        新增用户
+        useGeneratedKeys="true" + keyProperty="id"
+        让插入后自动把数据库生成的自增 ID 回填到 Java 对象的 id 属性上
+    -->
+    <insert id="insert" parameterType="User"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO sys_user
+        (username, password, nickname, avatar, email, student_no, college_id,
+         role, credit_score, level, status, created_at, updated_at, is_deleted)
+        VALUES
+        (#{username}, #{password}, #{nickname}, #{avatar}, #{email}, #{studentNo},
+         #{collegeId}, #{role}, #{creditScore}, #{level}, #{status},
+         NOW(), NOW(), 0)
+    </insert>
+
+    <!-- 更新最后登录时间 -->
+    <update id="updateLastLoginTime">
+        UPDATE sys_user
+        SET last_login_at = #{lastLoginAt},
+            updated_at    = NOW()
+        WHERE id = #{id}
+    </update>
+
+</mapper>
