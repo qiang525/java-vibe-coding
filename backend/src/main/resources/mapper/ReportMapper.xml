@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- 举报模块 SQL -->
+<mapper namespace="com.nnuist.coursehub.mapper.ReportMapper">
+
+    <!--
+        举报列表
+        targetTitle 用 CASE WHEN 按类型取不同表的名字：
+          资料 → 取 resource.title
+          评论 → 取 comment.content 的前 50 个字符
+          用户 → 取 sys_user.nickname
+        这就是"多态关联"带来的查询代价，换来的是表结构简单
+    -->
+    <select id="selectPage" resultType="ReportVO">
+        SELECT rp.id, rp.reporter_id, rp.target_type, rp.target_id,
+               rp.reason, rp.description, rp.status,
+               rp.handler_id, rp.handle_note, rp.handled_at, rp.created_at,
+               u.nickname AS reporter_name,
+               h.nickname AS handler_name,
+               CASE rp.target_type
+                   WHEN 'RESOURCE' THEN (SELECT title FROM resource WHERE id = rp.target_id)
+                   WHEN 'COMMENT'  THEN (SELECT LEFT(content, 50) FROM comment WHERE id = rp.target_id)
+                   WHEN 'USER'     THEN (SELECT nickname FROM sys_user WHERE id = rp.target_id)
+                   ELSE ''
+               END AS target_title
+        FROM report rp
+        LEFT JOIN sys_user u ON u.id = rp.reporter_id
+        LEFT JOIN sys_user h ON h.id = rp.handler_id
+        <where>
+            <if test="status != null and status != ''">
+                rp.status = #{status}
+            </if>
+        </where>
+        ORDER BY rp.created_at DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="countPage" resultType="long">
+        SELECT COUNT(1)
+        FROM report
+        <where>
+            <if test="status != null and status != ''">
+                status = #{status}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectById" resultType="Report">
+        SELECT id, reporter_id, target_type, target_id, reason, description,
+               status, handler_id, handle_note, handled_at, created_at
+        FROM report
+        WHERE id = #{id}
+        LIMIT 1
+    </select>
+
+    <!-- 防重复举报：同一人对同一对象还有待处理的举报，就不让再提 -->
+    <select id="countPending" resultType="int">
+        SELECT COUNT(1)
+        FROM report
+        WHERE reporter_id = #{reporterId}
+          AND target_type = #{targetType}
+          AND target_id = #{targetId}
+          AND status = 'PENDING'
+    </select>
+
+    <insert id="insert" parameterType="Report"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO report
+        (reporter_id, target_type, target_id, reason, description,
+         status, handle_note, created_at)
+        VALUES
+        (#{reporterId}, #{targetType}, #{targetId}, #{reason}, #{description},
+         'PENDING', '', NOW())
+    </insert>
+
+    <update id="updateHandleStatus" parameterType="Report">
+        UPDATE report
+        SET status = #{status},
+            handler_id = #{handlerId},
+            handle_note = #{handleNote},
+            handled_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+</mapper>

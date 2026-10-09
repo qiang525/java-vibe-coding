@@ -75,4 +75,16 @@ public interface ResourceMapper {
 
     /** 下载数 +1 */
     int increaseDownloadCount(@Param("id") Long id);
+
+    /** 收藏数 +1 */
+    int increaseFavoriteCount(@Param("id") Long id);
+
+    /** 收藏数 -1 */
+    int decreaseFavoriteCount(@Param("id") Long id);
+
+    /** 评论数 +1 */
+    int increaseCommentCount(@Param("id") Long id);
+
+    /** 评论数 -1 */
+    int decreaseCommentCount(@Param("id") Long id);
 }

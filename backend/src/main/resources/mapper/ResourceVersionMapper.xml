@@ -40,6 +40,20 @@
         ORDER BY version_no DESC, id DESC
     </select>
 
+    <!-- 版本列表：JOIN 出文件名与编辑者昵称，前端拿到就能直接渲染 -->
+    <select id="listVersions" resultType="VersionVO">
+        SELECT v.id, v.resource_id, v.file_id, v.parent_version_id,
+               v.version_no, v.branch, v.change_log, v.editor_id,
+               v.is_rollback, v.rollback_from_version_id, v.created_at,
+               f.file_name, f.file_size,
+               u.nickname AS editor_name
+        FROM resource_version v
+        LEFT JOIN file f ON f.id = v.file_id
+        LEFT JOIN sys_user u ON u.id = v.editor_id
+        WHERE v.resource_id = #{resourceId}
+        ORDER BY v.version_no DESC, v.id DESC
+    </select>
+
     <!--
         取某分支下的最大版本号
         新建版本时用它 +1 生成新版本号。

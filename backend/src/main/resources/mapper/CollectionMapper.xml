@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- 收藏模块 SQL -->
+<mapper namespace="com.nnuist.coursehub.mapper.CollectionMapper">
+
+    <!--
+        我的收藏列表
+        一次 JOIN 把标题、课程名、文件名都带出来，前端拿到就能渲染，
+        不需要为每条收藏再查一次资料（避免 N+1）
+    -->
+    <select id="selectPage" resultType="CollectionVO">
+        SELECT col.id, col.resource_id, col.folder, col.created_at,
+               r.title, r.type, r.visibility, r.download_count,
+               c.name AS course_name,
+               u.nickname AS uploader_name,
+               f.file_name, f.file_size
+        FROM collection col
+        LEFT JOIN resource r ON r.id = col.resource_id
+        LEFT JOIN course c ON c.id = r.course_id
+        LEFT JOIN sys_user u ON u.id = r.uploader_id
+        LEFT JOIN resource_version rv ON rv.id = r.current_version_id
+        LEFT JOIN file f ON f.id = rv.file_id
+        WHERE col.user_id = #{userId}
+        ORDER BY col.created_at DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="countPage" resultType="long">
+        SELECT COUNT(1)
+        FROM collection
+        WHERE user_id = #{userId}
+    </select>
+
+    <select id="countByUserAndResource" resultType="int">
+        SELECT COUNT(1)
+        FROM collection
+        WHERE user_id = #{userId}
+          AND resource_id = #{resourceId}
+    </select>
+
+    <insert id="insert">
+        INSERT INTO collection (user_id, resource_id, folder, created_at)
+        VALUES (#{userId}, #{resourceId}, #{folder}, NOW())
+    </insert>
+
+    <delete id="delete">
+        DELETE FROM collection
+        WHERE user_id = #{userId}
+          AND resource_id = #{resourceId}
+    </delete>
+
+</mapper>

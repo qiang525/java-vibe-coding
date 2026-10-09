@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- 评论模块 SQL -->
+<mapper namespace="com.nnuist.coursehub.mapper.CommentMapper">
+
+    <sql id="VO_Column_List">
+        c.id, c.resource_id, c.user_id, c.parent_id, c.root_id, c.type,
+        c.content, c.like_count, c.reply_count, c.is_top, c.status, c.created_at,
+        u.nickname AS user_name, u.avatar AS user_avatar
+    </sql>
+
+    <!--
+        查一级评论（parent_id IS NULL）
+        按"置顶优先 + 时间倒序"排列
+    -->
+    <select id="selectTopLevel" resultType="CommentVO">
+        SELECT
+        <include refid="VO_Column_List"/>
+        FROM comment c
+        LEFT JOIN sys_user u ON u.id = c.user_id
+        WHERE c.resource_id = #{resourceId}
+          AND c.parent_id IS NULL
+          AND c.is_deleted = 0
+          AND c.status = 'NORMAL'
+        ORDER BY c.is_top DESC, c.created_at DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <!--
+        批量查回复：用 IN 一次把多条一级评论的所有回复捞回来
+        这样列表页只有 2 次查询（1 次查一级 + 1 次查回复），不是 N+1
+    -->
+    <select id="selectRepliesByRootIds" resultType="CommentVO">
+        SELECT
+        <include refid="VO_Column_List"/>
+        FROM comment c
+        LEFT JOIN sys_user u ON u.id = c.user_id
+        WHERE c.root_id IN
+        <foreach collection="rootIds" item="rid" open="(" separator="," close=")">
+            #{rid}
+        </foreach>
+          AND c.is_deleted = 0
+          AND c.status = 'NORMAL'
+        ORDER BY c.created_at ASC
+    </select>
+
+    <select id="countTopLevel" resultType="long">
+        SELECT COUNT(1)
+        FROM comment
+        WHERE resource_id = #{resourceId}
+          AND parent_id IS NULL
+          AND is_deleted = 0
+          AND status = 'NORMAL'
+    </select>
+
+    <select id="selectById" resultType="Comment">
+        SELECT id, resource_id, user_id, parent_id, root_id, type, content,
+               like_count, reply_count, is_top, status, created_at, is_deleted
+        FROM comment
+        WHERE id = #{id}
+          AND is_deleted = 0
+        LIMIT 1
+    </select>
+
+    <insert id="insert" parameterType="Comment"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO comment
+        (resource_id, user_id, parent_id, root_id, type, content,
+         like_count, reply_count, is_top, status, created_at, is_deleted)
+        VALUES
+        (#{resourceId}, #{userId}, #{parentId}, #{rootId}, #{type}, #{content},
+         0, 0, 0, 'NORMAL', NOW(), 0)
+    </insert>
+
+    <update id="softDelete">
+        UPDATE comment
+        SET is_deleted = 1
+        WHERE id = #{id}
+          AND is_deleted = 0
+    </update>
+
+    <update id="increaseReplyCount">
+        UPDATE comment
+        SET reply_count = reply_count + 1
+        WHERE id = #{id}
+    </update>
+
+</mapper>

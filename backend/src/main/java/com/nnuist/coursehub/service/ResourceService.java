@@ -3,9 +3,11 @@ package com.nnuist.coursehub.service;
 import com.nnuist.coursehub.common.page.PageResult;
 import com.nnuist.coursehub.dto.ResourceQueryDTO;
 import com.nnuist.coursehub.dto.ResourceSaveDTO;
+import com.nnuist.coursehub.dto.VersionCreateDTO;
 import com.nnuist.coursehub.vo.FileDownloadResult;
 import com.nnuist.coursehub.vo.HotKeywordVO;
 import com.nnuist.coursehub.vo.ResourceVO;
+import com.nnuist.coursehub.vo.VersionVO;
 
 import java.util.List;
 
@@ -72,6 +74,27 @@ public interface ResourceService {
      * <p>同时会：课程资料数 -1、释放文件引用。</p>
      */
     void delete(Long id);
+
+    /**
+     * 查询资料的版本列表（版本树的所有节点）
+     */
+    List<VersionVO> listVersions(Long resourceId);
+
+    /**
+     * 新增一个版本（上传新文件替换内容，历史版本保留）
+     *
+     * @return 新版本 ID
+     */
+    Long addVersion(Long resourceId, VersionCreateDTO dto);
+
+    /**
+     * 回滚到指定版本
+     *
+     * <p><b>注意</b>：回滚不是"把旧版本改回来"，而是<b>生成一个新版本</b>，
+     * 内容取自旧版本，并标记 {@code isRollback=1}。
+     * 这样历史永远完整，能看出"什么时候改的、什么时候回滚的"。</p>
+     */
+    void rollback(Long resourceId, Long versionId);
 
     /**
      * 下载资料对应的文件

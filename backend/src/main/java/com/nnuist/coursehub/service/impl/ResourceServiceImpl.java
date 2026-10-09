@@ -7,6 +7,7 @@ import com.nnuist.coursehub.common.util.FileUtil;
 import com.nnuist.coursehub.common.util.UserContext;
 import com.nnuist.coursehub.dto.ResourceQueryDTO;
 import com.nnuist.coursehub.dto.ResourceSaveDTO;
+import com.nnuist.coursehub.dto.VersionCreateDTO;
 import com.nnuist.coursehub.entity.Course;
 import com.nnuist.coursehub.entity.FileInfo;
 import com.nnuist.coursehub.entity.Resource;
@@ -20,6 +21,7 @@ import com.nnuist.coursehub.service.ResourceService;
 import com.nnuist.coursehub.vo.FileDownloadResult;
 import com.nnuist.coursehub.vo.HotKeywordVO;
 import com.nnuist.coursehub.vo.ResourceVO;
+import com.nnuist.coursehub.vo.VersionVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -269,7 +271,11 @@ public class ResourceServiceImpl implements ResourceService {
         pointer.setCurrentVersionId(version.getId());
         resourceMapper.update(pointer);
 
-        // ⑥ 课程的资料数 +1（冗余字段，避免列表页对每门课 COUNT）
+        // ⑥ 文件被这份资料引用，引用计数 +1
+        //    （upload 时 file 是 1；被资料引用后变 2；删除资料时 -1 回到 1）
+        fileMapper.increaseRefCount(file.getId());
+
+        // ⑦ 课程的资料数 +1（冗余字段，避免列表页对每门课 COUNT）
         courseMapper.increaseResourceCount(course.getId(), 1);
 
         log.info("发布资料 | resourceId={} | courseId={} | fileId={} | title={}",
@@ -336,6 +342,120 @@ public class ResourceServiceImpl implements ResourceService {
         }
         resourceMapper.increaseDownloadCount(id);
         return fileService.download(vo.getFileId());
+    }
+
+    // =========================================================================
+    //  版本树
+    // =========================================================================
+
+    @Override
+    public List<VersionVO> listVersions(Long resourceId) {
+        ResourceVO vo = resourceMapper.selectVOById(resourceId);
+        if (vo == null) {
+            throw new BizException(ResultCode.RESOURCE_NOT_FOUND);
+        }
+        // 版本历史同样受可见性约束 —— 不然私密资料的版本列表就泄露了
+        checkVisible(vo);
+
+        Long currentVersionId = vo.getCurrentVersionId();
+        List<VersionVO> list = versionMapper.listVersions(resourceId);
+        for (VersionVO v : list) {
+            if (v.getFileSize() != null) {
+                v.setReadableSize(FileUtil.formatSize(v.getFileSize()));
+            }
+            v.setIsCurrent(v.getId() != null && v.getId().equals(currentVersionId));
+        }
+        return list;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Long addVersion(Long resourceId, VersionCreateDTO dto) {
+        Resource resource = getExistingOrThrow(resourceId);
+        checkModifyPermission(resource);
+
+        FileInfo file = fileMapper.selectById(dto.getFileId());
+        if (file == null) {
+            throw new BizException(ResultCode.FILE_NOT_FOUND, "文件不存在，请重新上传");
+        }
+
+        // 父版本：优先用前端指定的，否则挂在当前版本下
+        Long parentId = dto.getParentVersionId() != null
+                ? dto.getParentVersionId()
+                : resource.getCurrentVersionId();
+
+        int nextNo = nextVersionNo(resourceId);
+
+        ResourceVersion version = new ResourceVersion();
+        version.setResourceId(resourceId);
+        version.setFileId(file.getId());
+        version.setParentVersionId(parentId);
+        version.setVersionNo(nextNo);
+        version.setBranch(BRANCH_MAIN);
+        version.setChangeLog(isBlank(dto.getChangeLog()) ? "更新内容" : dto.getChangeLog());
+        version.setEditorId(UserContext.getUserId());
+        version.setIsRollback(0);
+        versionMapper.insert(version);
+
+        // 把"当前版本指针"移到新版本上，历史版本一条不动
+        moveCurrentVersion(resource, version.getId());
+
+        // 新文件被引用，计数 +1
+        fileMapper.increaseRefCount(file.getId());
+
+        log.info("新增版本 | resourceId={} | v{} | fileId={}", resourceId, nextNo, file.getId());
+        return version.getId();
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void rollback(Long resourceId, Long versionId) {
+        Resource resource = getExistingOrThrow(resourceId);
+        checkModifyPermission(resource);
+
+        ResourceVersion target = versionMapper.selectById(versionId);
+        if (target == null || !resourceId.equals(target.getResourceId())) {
+            throw new BizException(ResultCode.VERSION_NOT_FOUND);
+        }
+        if (versionId.equals(resource.getCurrentVersionId())) {
+            throw new BizException(ResultCode.OPERATION_NOT_ALLOWED, "这已经是当前版本了");
+        }
+
+        int nextNo = nextVersionNo(resourceId);
+
+        // 关键：回滚不是"改回去"，而是**新增一个版本**，内容取自目标版本
+        ResourceVersion version = new ResourceVersion();
+        version.setResourceId(resourceId);
+        version.setFileId(target.getFileId());     // 复用目标版本的文件，不复制物理文件
+        version.setParentVersionId(resource.getCurrentVersionId());
+        version.setVersionNo(nextNo);
+        version.setBranch(BRANCH_MAIN);
+        version.setChangeLog("回滚到 v" + target.getVersionNo());
+        version.setEditorId(UserContext.getUserId());
+        version.setIsRollback(1);
+        version.setRollbackFromVersionId(versionId);
+        versionMapper.insert(version);
+
+        moveCurrentVersion(resource, version.getId());
+
+        log.info("回滚资料 | resourceId={} | 从 v{} 回滚，生成 v{}",
+                resourceId, target.getVersionNo(), nextNo);
+    }
+
+    /** 取下一个版本号（同分支内 MAX + 1） */
+    private int nextVersionNo(Long resourceId) {
+        Integer maxNo = versionMapper.selectMaxVersionNo(resourceId, BRANCH_MAIN);
+        return (maxNo == null ? 0 : maxNo) + 1;
+    }
+
+    /** 把资料的当前版本指针移到指定版本，并让版本数 +1 */
+    private void moveCurrentVersion(Resource resource, Long versionId) {
+        Resource update = new Resource();
+        update.setId(resource.getId());
+        update.setCurrentVersionId(versionId);
+        int current = resource.getVersionCount() == null ? 1 : resource.getVersionCount();
+        update.setVersionCount(current + 1);
+        resourceMapper.update(update);
     }
 
     // =========================================================================

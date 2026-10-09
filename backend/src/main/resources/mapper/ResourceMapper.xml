@@ -201,6 +201,34 @@
         WHERE id = #{id}
     </update>
 
+    <!-- 收藏数增减（同样用原地自增自减，避免并发覆盖） -->
+    <update id="increaseFavoriteCount">
+        UPDATE resource
+        SET favorite_count = favorite_count + 1
+        WHERE id = #{id}
+    </update>
+
+    <update id="decreaseFavoriteCount">
+        UPDATE resource
+        SET favorite_count = favorite_count - 1
+        WHERE id = #{id}
+          AND favorite_count > 0
+    </update>
+
+    <!-- 评论数增减 -->
+    <update id="increaseCommentCount">
+        UPDATE resource
+        SET comment_count = comment_count + 1
+        WHERE id = #{id}
+    </update>
+
+    <update id="decreaseCommentCount">
+        UPDATE resource
+        SET comment_count = comment_count - 1
+        WHERE id = #{id}
+          AND comment_count > 0
+    </update>
+
     <!--
         ====================================================================
          全文检索

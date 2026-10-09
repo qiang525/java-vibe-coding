@@ -1,6 +1,7 @@
 package com.nnuist.coursehub.mapper;
 
 import com.nnuist.coursehub.entity.ResourceVersion;
+import com.nnuist.coursehub.vo.VersionVO;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -25,6 +26,11 @@ public interface ResourceVersionMapper {
      * 查某资料的所有版本（按版本号倒序）
      */
     List<ResourceVersion> selectByResourceId(@Param("resourceId") Long resourceId);
+
+    /**
+     * 查询某资料的版本列表（含文件名、编辑者昵称）
+     */
+    List<VersionVO> listVersions(@Param("resourceId") Long resourceId);
 
     /**
      * 统计某资料的最新版本号（用于生成下一个版本号）

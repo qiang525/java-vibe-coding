@@ -5,9 +5,11 @@ import com.nnuist.coursehub.common.page.PageResult;
 import com.nnuist.coursehub.common.result.Result;
 import com.nnuist.coursehub.dto.ResourceQueryDTO;
 import com.nnuist.coursehub.dto.ResourceSaveDTO;
+import com.nnuist.coursehub.dto.VersionCreateDTO;
 import com.nnuist.coursehub.service.ResourceService;
 import com.nnuist.coursehub.vo.FileDownloadResult;
 import com.nnuist.coursehub.vo.HotKeywordVO;
+import com.nnuist.coursehub.vo.VersionVO;
 import com.nnuist.coursehub.vo.ResourceVO;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -129,6 +131,43 @@ public class ResourceController {
     public Result<Void> delete(@PathVariable Long id) {
         resourceService.delete(id);
         return Result.ok("删除成功", null);
+    }
+
+    // ==================== 版本树 ====================
+
+    @ApiOperation("查询资料的版本列表")
+    @GetMapping("/{id}/versions")
+    public Result<java.util.List<VersionVO>> listVersions(@PathVariable Long id) {
+        return Result.ok(resourceService.listVersions(id));
+    }
+
+    /**
+     * 新增版本
+     *
+     * <pre>
+     * 流程：先调上传接口拿 fileId → 再调本接口生成新版本
+     * </pre>
+     */
+    @ApiOperation("新增版本（更新资料内容）")
+    @RequireLogin
+    @PostMapping("/{id}/versions")
+    public Result<Long> addVersion(@PathVariable Long id,
+                                   @Valid @RequestBody VersionCreateDTO dto) {
+        return Result.ok("新版本已生成", resourceService.addVersion(id, dto));
+    }
+
+    /**
+     * 回滚到指定版本
+     *
+     * <p>回滚会<b>生成一个新版本</b>（内容取自目标版本），而不是删掉中间版本。
+     * 这样历史链路完整可追溯。</p>
+     */
+    @ApiOperation("回滚到指定版本（会生成新版本，历史不丢）")
+    @RequireLogin
+    @PostMapping("/{id}/rollback/{versionId}")
+    public Result<Void> rollback(@PathVariable Long id, @PathVariable Long versionId) {
+        resourceService.rollback(id, versionId);
+        return Result.ok("已回滚（生成了新版本）", null);
     }
 
     /**
