@@ -262,24 +262,8 @@ public class FileServiceImpl implements FileService {
         vo.setCreatedAt(info.getCreatedAt());
         vo.setDownloadUrl("/api/files/" + info.getId() + "/download");
         vo.setInstantUpload(instantUpload);
-        vo.setReadableSize(formatSize(info.getFileSize()));
+        // 复用 FileUtil 里的格式化方法（同一段逻辑不要写两遍）
+        vo.setReadableSize(FileUtil.formatSize(info.getFileSize()));
         return vo;
-    }
-
-    /** 把字节数格式化成人看得懂的样子 */
-    private String formatSize(Long bytes) {
-        if (bytes == null || bytes <= 0) {
-            return "0 B";
-        }
-        String[] units = {"B", "KB", "MB", "GB"};
-        double size = bytes;
-        int unit = 0;
-        while (size >= 1024 && unit < units.length - 1) {
-            size /= 1024;
-            unit++;
-        }
-        return unit == 0
-                ? bytes + " B"
-                : String.format(Locale.ROOT, "%.2f %s", size, units[unit]);
     }
 }

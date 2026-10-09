@@ -44,6 +44,16 @@ public interface CourseMapper {
     Course selectById(@Param("id") Long id);
 
     /**
+     * 批量按主键查询课程
+     *
+     * <p><b>为什么需要批量查询</b>：资料列表要给每条资料标注"当前用户能不能改"，
+     * 这就需要知道每条资料所属课程的负责人。如果循环里逐条调 {@code selectById}，
+     * 一页 10 条就是 10 次查询 —— 这就是典型的 <b>N+1 查询问题</b>。
+     * 用一次 {@code WHERE id IN (...)} 查回来，在内存里做映射即可。</p>
+     */
+    List<Course> selectByIds(@Param("ids") List<Long> ids);
+
+    /**
      * 新增课程
      */
     int insert(Course course);
@@ -89,4 +99,14 @@ public interface CourseMapper {
      */
     int increaseMemberCount(@Param("courseId") Long courseId,
                             @Param("delta") int delta);
+
+    /**
+     * 增减资料数
+     *
+     * <p>课程表上的 {@code resource_count} 是冗余字段，用于列表页直接展示，
+     * 避免对每门课都 COUNT 一次资料表（那就是 N+1 查询）。
+     * 发布/删除资料时调用本方法维护它。</p>
+     */
+    int increaseResourceCount(@Param("courseId") Long courseId,
+                              @Param("delta") int delta);
 }

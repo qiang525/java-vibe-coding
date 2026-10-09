@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+    资料版本 SQL 映射
+    对应表：resource_version（版本树）
+-->
+<mapper namespace="com.nnuist.coursehub.mapper.ResourceVersionMapper">
+
+    <sql id="Base_Column_List">
+        id, resource_id, file_id, parent_version_id, version_no, branch,
+        change_log, editor_id, is_rollback, rollback_from_version_id, created_at
+    </sql>
+
+    <insert id="insert" parameterType="ResourceVersion"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO resource_version
+        (resource_id, file_id, parent_version_id, version_no, branch,
+         change_log, editor_id, is_rollback, rollback_from_version_id, created_at)
+        VALUES
+        (#{resourceId}, #{fileId}, #{parentVersionId}, #{versionNo}, #{branch},
+         #{changeLog}, #{editorId}, #{isRollback}, #{rollbackFromVersionId}, NOW())
+    </insert>
+
+    <select id="selectById" resultType="ResourceVersion">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM resource_version
+        WHERE id = #{id}
+        LIMIT 1
+    </select>
+
+    <!-- 查某资料的所有版本，新的在前（为 M3 版本列表做准备） -->
+    <select id="selectByResourceId" resultType="ResourceVersion">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM resource_version
+        WHERE resource_id = #{resourceId}
+        ORDER BY version_no DESC, id DESC
+    </select>
+
+    <!--
+        取某分支下的最大版本号
+        新建版本时用它 +1 生成新版本号。
+        用 MAX 而不是 COUNT：即使中间删过版本，号也不会重复。
+    -->
+    <select id="selectMaxVersionNo" resultType="java.lang.Integer">
+        SELECT MAX(version_no)
+        FROM resource_version
+        WHERE resource_id = #{resourceId}
+          AND branch = #{branch}
+    </select>
+
+</mapper>

@@ -244,4 +244,30 @@ public final class FileUtil {
         }
         return true;
     }
+
+    // =========================================================================
+    //  五、其他
+    // =========================================================================
+
+    /**
+     * 把字节数格式化成人看得懂的样子
+     *
+     * <p>如 {@code 2621440 -> "2.50 MB"}。
+     * 放在工具类里是为了让文件模块和资料模块共用同一份逻辑。</p>
+     */
+    public static String formatSize(Long bytes) {
+        if (bytes == null || bytes <= 0) {
+            return "0 B";
+        }
+        String[] units = {"B", "KB", "MB", "GB"};
+        double size = bytes;
+        int unit = 0;
+        while (size >= 1024 && unit < units.length - 1) {
+            size /= 1024;
+            unit++;
+        }
+        return unit == 0
+                ? bytes + " B"
+                : String.format(Locale.ROOT, "%.2f %s", size, units[unit]);
+    }
 }

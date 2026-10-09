@@ -93,6 +93,21 @@
         LIMIT 1
     </select>
 
+    <!--
+        批量查询（避免 N+1）
+        <foreach> 会把集合拼成 (1,2,3) 的形式。
+        这里只取 id 和 owner_id 两列，因为调用方只关心负责人是谁。
+    -->
+    <select id="selectByIds" resultType="Course">
+        SELECT id, owner_id
+        FROM course
+        WHERE is_deleted = 0
+          AND id IN
+        <foreach collection="ids" item="item" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+    </select>
+
     <insert id="insert" parameterType="Course"
             useGeneratedKeys="true" keyProperty="id">
         INSERT INTO course
@@ -160,6 +175,14 @@
         SET member_count = member_count + #{delta}
         WHERE id = #{courseId}
           AND member_count + #{delta} >= 0
+    </update>
+
+    <!-- 资料数增减（冗余字段维护，发布/删除资料时调用） -->
+    <update id="increaseResourceCount">
+        UPDATE course
+        SET resource_count = resource_count + #{delta}
+        WHERE id = #{courseId}
+          AND resource_count + #{delta} >= 0
     </update>
 
 </mapper>

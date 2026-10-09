@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+    资料模块 SQL 映射
+    ============================================================
+    本文件是全项目 SQL 最复杂的一个，核心看两个地方：
+      1. Common_Where 里的「三级可见性过滤」—— 安全关键
+      2. selectPage 里的多表 JOIN —— 一次查询把前端要的字段全带出来
+-->
+<mapper namespace="com.nnuist.coursehub.mapper.ResourceMapper">
+
+    <!--
+        列表/详情返回的字段
+        注意这些 JOIN：
+          course          → 带出课程名
+          sys_user        → 带出上传者昵称
+          resource_version + file → 带出当前版本对应的文件信息
+        为什么要 JOIN 而不是让前端再查一次：
+          列表一页 10 条，如果每条都让前端再发请求查文件名，就是 10 次额外请求。
+          JOIN 在数据库里一次搞定，前端拿到就能直接渲染。
+    -->
+    <sql id="VO_Column_List">
+        r.id, r.course_id, c.name AS course_name, r.chapter_id,
+        r.uploader_id, u.nickname AS uploader_name,
+        r.title, r.description, r.type, r.visibility, r.status, r.score,
+        r.download_count, r.view_count, r.favorite_count, r.comment_count,
+        r.version_count, r.avg_rating, r.current_version_id,
+        r.created_at, r.updated_at,
+        rv.file_id, f.file_name, f.file_ext, f.file_size
+    </sql>
+
+    <sql id="VO_Joins">
+        FROM resource r
+        LEFT JOIN course c ON c.id = r.course_id
+        LEFT JOIN sys_user u ON u.id = r.uploader_id
+        LEFT JOIN resource_version rv ON rv.id = r.current_version_id
+        LEFT JOIN file f ON f.id = rv.file_id
+    </sql>
+
+    <!--
+        ====================================================================
+         公共查询条件 —— 含「三级可见性过滤」
+        ====================================================================
+        这段是数据权限的关键。它保证：
+          · 游客（currentUserId = null）只能看到 PUBLIC 资料
+          · 登录用户能看到 PUBLIC + 自己的全部 + 本课程成员的 COURSE_ONLY
+          · 课程负责人能看到本课程所有资料
+          · 管理员看全部（跳过整段过滤）
+
+        为什么把权限写在 SQL 里，而不是查出来再在 Java 里过滤：
+          1. 高效 —— 数据库直接少返回数据，不用查 10000 条再扔掉 9990 条
+          2. 安全 —— 万一业务代码漏写判断，SQL 这层还兜着
+    -->
+    <sql id="Common_Where">
+        <where>
+            r.is_deleted = 0
+            <if test="q.courseId != null">
+                AND r.course_id = #{q.courseId}
+            </if>
+            <if test="q.uploaderId != null">
+                AND r.uploader_id = #{q.uploaderId}
+            </if>
+            <if test="q.type != null and q.type != ''">
+                AND r.type = #{q.type}
+            </if>
+            <if test="q.visibility != null and q.visibility != ''">
+                AND r.visibility = #{q.visibility}
+            </if>
+            <if test="q.status != null and q.status != ''">
+                AND r.status = #{q.status}
+            </if>
+            <if test="q.keyword != null and q.keyword != ''">
+                AND (r.title LIKE CONCAT('%', #{q.keyword}, '%')
+                OR r.description LIKE CONCAT('%', #{q.keyword}, '%'))
+            </if>
+
+            <!-- ============ 三级可见性过滤（管理员跳过） ============ -->
+            <if test="q.isAdmin == null or q.isAdmin == false">
+                AND (
+                    r.visibility = 'PUBLIC'
+                    <if test="q.currentUserId != null">
+                        <!-- 自己上传的，无论什么可见性都能看 -->
+                        OR r.uploader_id = #{q.currentUserId}
+                        <!-- 仅本课程：必须是课程成员 -->
+                        OR (r.visibility = 'COURSE_ONLY' AND EXISTS (
+                                SELECT 1 FROM course_member cm
+                                WHERE cm.course_id = r.course_id
+                                  AND cm.user_id = #{q.currentUserId}
+                            ))
+                        <!-- 课程负责人对本课程资料有完全访问权 -->
+                        OR EXISTS (
+                            SELECT 1 FROM course c2
+                            WHERE c2.id = r.course_id
+                              AND c2.owner_id = #{q.currentUserId}
+                        )
+                    </if>
+                )
+            </if>
+        </where>
+    </sql>
+
+    <!-- 分页列表 -->
+    <select id="selectPage" resultType="ResourceVO">
+        SELECT
+        <include refid="VO_Column_List"/>
+        <include refid="VO_Joins"/>
+        <include refid="Common_Where"/>
+        ORDER BY r.created_at DESC, r.id DESC
+        LIMIT #{q.offset}, #{q.pageSize}
+    </select>
+
+    <!-- 统计总数（条件与列表严格一致，否则分页数字对不上） -->
+    <select id="countPage" resultType="long">
+        SELECT COUNT(1)
+        FROM resource r
+        <include refid="Common_Where"/>
+    </select>
+
+    <!--
+        资料详情
+        这里刻意【不加】可见性过滤 —— 让 Service 层区分：
+          · 查不到      → 404 资料不存在
+          · 查到但无权  → 403 无权访问
+        如果这里就过滤掉，两种情况都变成 404，反而不好排查。
+    -->
+    <select id="selectVOById" resultType="ResourceVO">
+        SELECT
+        <include refid="VO_Column_List"/>
+        <include refid="VO_Joins"/>
+        WHERE r.id = #{id}
+          AND r.is_deleted = 0
+        LIMIT 1
+    </select>
+
+    <!-- 资料实体（Service 内部权限判断用） -->
+    <select id="selectById" resultType="Resource">
+        SELECT id, course_id, chapter_id, uploader_id, current_version_id,
+               title, description, type, visibility, status, score,
+               download_count, view_count, favorite_count, comment_count,
+               version_count, avg_rating, rating_count, reject_reason,
+               created_at, updated_at, is_deleted
+        FROM resource
+        WHERE id = #{id}
+          AND is_deleted = 0
+        LIMIT 1
+    </select>
+
+    <insert id="insert" parameterType="Resource"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO resource
+        (course_id, chapter_id, uploader_id, current_version_id,
+         title, description, type, visibility, status,
+         download_count, view_count, favorite_count, comment_count,
+         version_count, avg_rating, rating_count, reject_reason,
+         created_at, updated_at, is_deleted)
+        VALUES
+        (#{courseId}, #{chapterId}, #{uploaderId}, #{currentVersionId},
+         #{title}, #{description}, #{type}, #{visibility}, #{status},
+         0, 0, 0, 0,
+         #{versionCount}, 0.0, 0, '',
+         NOW(), NOW(), 0)
+    </insert>
+
+    <!-- 只更新"当前版本指针"（新建资料时，先插 resource 再插 version，最后回填） -->
+    <update id="update" parameterType="Resource">
+        UPDATE resource
+        <set>
+            <if test="title != null">title = #{title},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="type != null">type = #{type},</if>
+            <if test="visibility != null">visibility = #{visibility},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="chapterId != null">chapter_id = #{chapterId},</if>
+            <if test="currentVersionId != null">current_version_id = #{currentVersionId},</if>
+            <if test="versionCount != null">version_count = #{versionCount},</if>
+            updated_at = NOW()
+        </set>
+        WHERE id = #{id}
+          AND is_deleted = 0
+    </update>
+
+    <update id="softDelete">
+        UPDATE resource
+        SET is_deleted = 1,
+            updated_at = NOW()
+        WHERE id = #{id}
+          AND is_deleted = 0
+    </update>
+
+    <update id="increaseViewCount">
+        UPDATE resource
+        SET view_count = view_count + 1
+        WHERE id = #{id}
+    </update>
+
+    <update id="increaseDownloadCount">
+        UPDATE resource
+        SET download_count = download_count + 1
+        WHERE id = #{id}
+    </update>
+
+</mapper>
