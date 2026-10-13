@@ -248,12 +248,27 @@ python test-m4.py        # 治理 18 项
 
 ---
 
-## 八、需要你配合的事
+## 八、当前状态与后续可选项
 
-1. **Java PATH 修复脚本**还没执行（不影响 Maven/IDEA）
-   → 双击 `tools\fix-java-path\run-fix.bat`
-2. **GitHub 仓库**还没推（本地已有 14 个提交）
-   → 建好仓库把 URL 给我即可
+### 已完成
+
+- ✅ **Java PATH 已修复**：PATH 里失效的 javapath 残留已清除，
+  `JAVA_HOME = E:\java\jdk11`
+- ✅ **代码已推送到 GitHub**：`git@github.com:qiang525/java-vibe-coding.git`
+- ✅ 工作区干净，所有改动已提交
+
+### 可以再做（可选，不影响项目可运行性）
+
+| 方向 | 说明 | 类型 |
+|---|---|---|
+| 补 5 张空表的功能 | `chapter` 章节管理、`download_record` 下载记录、`tag`/`resource_tag` 标签、`notification` 通知 | 新功能开发 |
+| 课程详情页加协作入口 | 版本历史 / 讨论区目前只在资料详情页 | 界面增强 |
+| 用户个人主页 | 查看某人上传的资料 | 新页面 |
+| 管理员仪表盘 | 审计日志 + 举报 + 评分重算 合到一页 | 新页面 |
+| JUnit 单元测试 | `backend/src/test` 目前为空（pom 已引入 spring-boot-starter-test） | 工程质量 |
+
+> README 的「核心功能模块」（M1~M7）是**需求侧规划**，
+> 哪些做了、哪些没做，见 README 的「✅ 实现状态说明」章节。
 
 ---
 

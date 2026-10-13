@@ -102,3 +102,9 @@ deploy/backup/
 # 用途：让"只启后端"时也能在 8080 打开网页。
 # 重新生成：双击 frontend/build-to-backend.bat
 backend/src/main/resources/static/
+
+# ================= 临时脚本/中间文件（下划线开头，仅本地调试用） =================
+/_*.py
+/_*.txt
+/_*.json
+/_*.mjs
