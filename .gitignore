@@ -108,3 +108,7 @@ backend/src/main/resources/static/
 /_*.txt
 /_*.json
 /_*.mjs
+
+# Python 缓存
+__pycache__/
+*.pyc

@@ -18,7 +18,9 @@ BASE="D:/桌面/Java项目AIGC/backend"
 MYSQL="E:/java/MySQL/MySQL Server 8.2/bin/mysql.exe"
 
 echo "-------- ① 清理上次测试数据 --------"
-export MYSQL_PWD='liuwenqiang123'
+# 数据库口令不写进文件：请先在命令行执行 export MYSQL_PWD=你的MySQL密码
+: "${MYSQL_PWD:?请先执行 export MYSQL_PWD=你的MySQL密码 再运行本脚本}"
+export MYSQL_PWD
 "$MYSQL" -uroot -D coursehub -e "TRUNCATE TABLE file;" 2>/dev/null && echo "file 表已清空" || echo "file 表清空失败（可忽略首次运行）"
 rm -rf "$BASE/upload/2026" && echo "upload 目录已清理"
 
