@@ -112,7 +112,11 @@ if token:
     check('用户信息不泄露凭据字段', (PWD_KEY not in json.dumps(body, ensure_ascii=False).lower()))
 
     st, body = call('GET', '/api/auth/me')
-    check('未带 JWT 访问 /api/auth/me 被拦截(401)', st == 401, 'HTTP ' + str(st))
+    # 设计约定：业务异常返回 HTTP 200 + 业务码（前端按 code 判断）
+    # 未登录 = 业务码 40101（也可能直接 HTTP 401，两种都算被拦截）
+    denied = (st == 401) or (isinstance(body, dict) and body.get('code') == 40101)
+    code = body.get('code') if isinstance(body, dict) else '-'
+    check('未带 JWT 访问 /api/auth/me 被拦截', denied, 'HTTP %s, code=%s' % (st, code))
 
     # ---------- 6. 登录态下的业务接口 ----------
     st, body = call('GET', '/api/collections?page=1&pageSize=5', token=token)
